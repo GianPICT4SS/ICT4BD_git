@@ -1,0 +1,16 @@
+ ReadVarsESO
+ processing:/home/gianp/PycharmProjects/ICT4BD_git/src/in.rvi
+ input file:/home/gianp/PycharmProjects/ICT4BD_git/src/eplusout.eso
+ output file:/home/gianp/PycharmProjects/ICT4BD_git/src/eplusout.csv
+ getting all vars from:/home/gianp/PycharmProjects/ICT4BD_git/src/eplusout.eso
+  number variables requested for output=         318
+ ReadVars Run Time=00hr 00min  2.10sec
+ ReadVarsESO program completed successfully.
+ ReadVarsESO
+ processing:/home/gianp/PycharmProjects/ICT4BD_git/src/in.mvi
+ input file:/home/gianp/PycharmProjects/ICT4BD_git/src/eplusout.mtr
+ output file:/home/gianp/PycharmProjects/ICT4BD_git/src/eplusmtr.csv
+ getting all vars from:/home/gianp/PycharmProjects/ICT4BD_git/src/eplusout.mtr
+  number variables requested for output=          36
+ ReadVars Run Time=00hr 00min  0.27sec
+ ReadVarsESO program completed successfully.
