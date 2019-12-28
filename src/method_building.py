@@ -4,28 +4,22 @@ import pandas as pd
 import matplotlib.pyplot as plt
 plt.rcParams['figure.figsize'] = [15, 15]
 from mpl_toolkits.mplot3d import Axes3D
+
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import QuantileTransformer
-from sklearn.pipeline import make_pipeline
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn import preprocessing
-from sklearn.inspection import partial_dependence
 from sklearn.inspection import plot_partial_dependence
-from sklearn.experimental import enable_hist_gradient_boosting  # noqa
 from sklearn.neural_network import MLPRegressor
 import seaborn as sns
-from seaborn import heatmap
-from seaborn import pairplot
+
+from eppy.modeleditor import IDF
 from besos import eppy_funcs as ef
-from besos import sampling
 from besos.evaluator import EvaluatorEP
 from besos.parameters import FieldSelector, Parameter, expand_plist
 from besos.problem import EPProblem
-from pathlib import Path
 import logging
-from eppy import modeleditor
-from eppy.modeleditor import IDF
-import statsmodels.api as sm
+
+
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s : %(message)s',
                     datefmt='%d/%m/%Y %H:%M ',
@@ -245,3 +239,24 @@ def energy_signature(iddfile, fname, epw):
 
     df.to_csv('../files/outputs/en_sig.csv')
     return df
+
+def generator(data, lookback, delay, min_index, max_index,
+              shuffle=False, batch_size=128, step=6):
+    if max_index is None:
+        max_index = len(data) - delay - 1
+    i = min_index + lookback
+    while 1:
+        if shuffle:
+            rows = np.random.randint(min_index + lookback, max_index, size=batch_size)
+        else:
+            if i + batch_size >= max_index:
+                i = min_index + lookback
+            rows = np.arange(i, min(i + batch_size, max_index))
+            i += len(rows)
+        samples = np.zeros((len(rows), lookback // step, data.shape[-1]))
+        targets = np.zeros((len(rows),))
+        for j, row in enumerate(rows):
+            indices = range(rows[j] - lookback, rows[j], step)
+            samples[j] = data[indices]
+            targets[j] = data[rows[j] + delay][1]
+        yield samples, targets
