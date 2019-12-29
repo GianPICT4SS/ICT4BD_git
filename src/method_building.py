@@ -1,4 +1,5 @@
 from time import time
+import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -11,6 +12,7 @@ from sklearn import preprocessing
 from sklearn.inspection import plot_partial_dependence
 from sklearn.neural_network import MLPRegressor
 import seaborn as sns
+import statsmodels.api as sm
 
 from eppy.modeleditor import IDF
 from besos import eppy_funcs as ef
@@ -213,22 +215,36 @@ def create_csv(df):
     return df1
 
 
-def energy_signature(iddfile, fname, epw):
+def energy_signature(iddfile, fname, epw, name=''):
 
     IDF.setiddname(iddfile)
     idf = IDF(fname, epw)
     idf.run(readvars=True)
 
-    df1 = pd.read_csv('eplusout.csv')
+    fname = 'eplusout' + name + '.csv'
+    os.system(f'cp eplusout.csv ../eplus_simulation/eplus/{fname}')
+
+
+
+    df1 = pd.read_csv(f'../eplus_simulation/eplus/{fname}')
 
     df = pd.DataFrame()
-
     # Temperature
     for i in df1.columns:
-        if 'Zone Operative Temperature [C](Hourly)' in i or 'Environment:Site Outdoor Air Drybulb Temperature [C](Hourly)' in i:
-            df[i] = df1[i]
-        elif 'Zone Ventilation Sensible Heat Loss Energy [J](Hourly)' in i:
-            df[i] = df1[i]
+        if 'BLOCCO1:ZONA1' in i:
+            if 'Zone Operative Temperature [C](Hourly)' in i:
+                df["Temp_in_1"] = df1[i]
+        elif 'BLOCCO1:ZONA2' in i:
+            if 'Zone Operative Temperature [C](Hourly)' in i:
+                df["Temp_in_2"] = df1[i]
+        elif 'BLOCCO1:ZONA3' in i:
+            if 'Zone Operative Temperature [C](Hourly)' in i:
+                df["Temp_in_3"] = df1[i]
+    df['Temp_out'] = df1['Environment:Site Outdoor Air Drybulb Temperature [C](Hourly)']
+    # Power
+    df['Cooling'] = df1['DistrictCooling:Facility [J](Hourly)']
+    df['Heating'] = df1['DistrictHeating:Facility [J](Hourly)']
+    df['Electricity'] = df1['Electricity:Facility [J](Hourly)']
 
     df['date'] = df1['Date/Time'].astype('O')
     df['date'] = df['date'].map(lambda x: x if '24:00' not in x else x.replace('24:00', '00:00'))
@@ -236,9 +252,63 @@ def energy_signature(iddfile, fname, epw):
     # idx = df['date'].map(lambda x: x if '24:00' not in x else x.replace('24:00', '00:00'))
     # df.set_index(idx)
     df = df.set_index(pd.to_datetime('2018/' + df.index))
+    df['Temp_in'] = df[['Temp_in_1', 'Temp_in_2', 'Temp_in_3']].astype(float).mean(1)
+    df['deltaT'] = df['Temp_in'] - df['Temp_out']
+    df['Power'] = (df['Heating'])/3.6e6
+    #df['Power'] = df['Electricity']
+    df.to_csv(f'../../files/outputs/en_sig_{name}.csv')
+    ls_r = []
+    df = df.resample('H').mean()
+    # df['p_z1'] = df['BLOCCO1:ZONA1:Zone Ventilation Sensible Heat Loss Energy [J](Hourly)']
+    model = sm.OLS(df['Power'], sm.add_constant(df['deltaT']))
+    results_h = model.fit()
+    ls_r.append(results_h)
 
-    df.to_csv('../files/outputs/en_sig.csv')
-    return df
+    # Plots
+    fig, (ax1, ax2, ax3) = plt.subplots(3, figsize=(10, 10))
+    fig.suptitle("Energy Signature")
+    ax1.plot(df['deltaT'], results_h.predict(), 'r')
+    ax1.scatter(df['deltaT'], df['Power'])
+    ax1.set_xlabel('Temperature [C]')
+    ax1.set_ylabel('Heating Consumption [kWh]')
+    ax1.set_title('Hourly resample')
+    ax1.grid(linestyle='--', linewidth=.4, which='both')
+
+    df = df.resample('D').mean()
+    #df['t_ext'] = df['Environment:Site Outdoor Air Drybulb Temperature [C](Hourly)']
+    #df['p_z1'] = df['BLOCCO1:ZONA1:Zone Ventilation Sensible Heat Loss Energy [J](Hourly)']
+    model = sm.OLS(df['Power'], sm.add_constant(df['deltaT']))
+    results_d = model.fit()
+    ls_r.append(results_d)
+
+
+    ax2.plot(df['deltaT'], results_d.predict(), 'r')
+    ax2.scatter(df['deltaT'], df['Power'])
+    ax2.set_xlabel('DeltaTemperature [C]')
+    ax2.set_ylabel('Heating Consumption [kWh]')
+    ax2.set_title('DAY resample')
+    ax2.grid(linestyle='--', linewidth=.4, which='both')
+
+    df = df.resample('W').mean()
+    #df['t_ext'] = df['Environment:Site Outdoor Air Drybulb Temperature [C](Hourly)']
+    #df['p_z1'] = df['BLOCCO1:ZONA1:Zone Ventilation Sensible Heat Loss Energy [J](Hourly)']
+    model = sm.OLS(df['Power'], sm.add_constant(df['deltaT']))
+    results_w = model.fit()
+    ls_r.append(results_w)
+
+    ax3.plot(df['deltaT'], results_w.predict(), 'r')
+    ax3.scatter(df['deltaT'], df['Power'])
+    ax3.set_xlabel('DeltaTemperature [C]')
+    ax3.set_ylabel('Heating Consumption [kWh]')
+    ax3.set_title('WEEK resample')
+    ax3.grid(linestyle='--', linewidth=.4, which='both')
+    plt.subplots_adjust(bottom=0.3, right=0.8, top=0.9, hspace=1)
+    plt.savefig(fname=f'../../plots/energy_signature_{name}.png', dpi=400)
+    plt.close()
+
+
+    return ls_r
+
 
 def generator(data, lookback, delay, min_index, max_index,
               shuffle=False, batch_size=128, step=6):
