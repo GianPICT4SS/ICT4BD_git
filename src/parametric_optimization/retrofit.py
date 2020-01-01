@@ -1,10 +1,13 @@
-from retrofit import parametric_analysis
+from src.method_building import Prediction
 
-path_On = '/home/gianp/PycharmProjects/building/ict4bd_git/files/idf/Office_On_corrected.idf'
 
-path_Off = '/home/gianp/PycharmProjects/building/ict4bd_git/files/idf/Office_Off_corrected.idf'
+learn = Prediction()
 
-path_w = '/home/gianp/PycharmProjects/building/ict4bd_git/files/epw/ITA_Torino.160590_IWEC.epw'
+path_On = '../../files/idf/Office_On_corrected.idf'
+
+path_Off = '../../files/idf/Office_Off_corrected.idf'
+
+path_w = '../../files/epw/ITA_Torino.160590_IWEC.epw'
 
 
 dinamic_parameter = {'class_name': 'Material',
@@ -21,8 +24,8 @@ fixed_parameters = [{'class_name': 'Material',
 objectives = ['Electricity:Facility', 'DistrictCooling:Facility', 'DistrictHeating:Facility']
 
 
-parametric_analysis(dinamic_parameter=dinamic_parameter, fixed_parameters=fixed_parameters,
-                    objectives=objectives, idf_path=path_On, epw_path=path_w)
+learn.parametric_analysis(dinamic_parameter=dinamic_parameter, fixed_parameters=fixed_parameters,
+                    objectives=objectives, idf_path=path_On, epw_path=path_w, n_points=6)
 
 
 

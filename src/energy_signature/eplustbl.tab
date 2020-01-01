@@ -1,4 +1,4 @@
-Program Version	EnergyPlus, Version 9.0.1-bb7ca4f0da, YMD=2019.12.29 18:01
+Program Version	EnergyPlus, Version 9.0.1-bb7ca4f0da, YMD=2020.01.01 16:57
 Tabular Output Report in Format: 	Tab
 
 Building:	Building
@@ -181,7 +181,7 @@ FOR:	Entire Facility
 General
 
 		Value
-	Program Version and Build	EnergyPlus, Version 9.0.1-bb7ca4f0da, YMD=2019.12.29 18:01
+	Program Version and Build	EnergyPlus, Version 9.0.1-bb7ca4f0da, YMD=2020.01.01 16:57
 	RunPeriod	OFFICE_ON (01-01:31-12)
 	Weather File	TORINO - ITA IWEC Data WMO#=160590
 	Latitude [deg]	45.22

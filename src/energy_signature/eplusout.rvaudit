@@ -4,7 +4,7 @@
  output file:/home/gianp/PycharmProjects/ICT4BD_git/src/energy_signature/eplusout.csv
  getting all vars from:/home/gianp/PycharmProjects/ICT4BD_git/src/energy_signature/eplusout.eso
   number variables requested for output=         318
- ReadVars Run Time=00hr 00min  3.36sec
+ ReadVars Run Time=00hr 00min  2.08sec
  ReadVarsESO program completed successfully.
  ReadVarsESO
  processing:/home/gianp/PycharmProjects/ICT4BD_git/src/energy_signature/in.mvi
@@ -12,5 +12,5 @@
  output file:/home/gianp/PycharmProjects/ICT4BD_git/src/energy_signature/eplusmtr.csv
  getting all vars from:/home/gianp/PycharmProjects/ICT4BD_git/src/energy_signature/eplusout.mtr
   number variables requested for output=          36
- ReadVars Run Time=00hr 00min  0.44sec
+ ReadVars Run Time=00hr 00min  0.29sec
  ReadVarsESO program completed successfully.

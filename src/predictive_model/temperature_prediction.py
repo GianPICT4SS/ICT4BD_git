@@ -1,49 +1,62 @@
-import pandas as pd
-from pandas.plotting import register_matplotlib_converters
-register_matplotlib_converters()
-import numpy as np
-from src.method_building import create_csv
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-mpl.rcParams['figure.figsize'] = (8, 6)
+# Python >3.4 is required
+import sys
+assert sys.version_info >= (3, 5)
 
+# Scikit-Learn > 0.19 is required
+import sklearn
+from sklearn import preprocessing
+assert sklearn.__version__ >= "0.20"
+
+# TensorFlow >= 2.0 is required
 import tensorflow as tf
+from tensorflow import keras
 
-from src.method_building import Prediction
+assert tf.__version__ >= "2.0"
 
-learn = Prediction()
+if not tf.test.is_gpu_available():
+    print("No GPU was detected: LSTMs and CNNs can be very slow without a GPU.")
 
-EVALUATION_INTERVAL = 400
-EPOCHS = 22
-BATCH_SIZE = 256
-BUFFER_SIZE = 1000
+# Common imports
+import numpy as np
+import pandas as pd
+import os
 
-
-
-
-df = pd.read_csv('../eplus_simulation/eplus/eplusout.csv')
-df = create_csv(df)
-TRAIN_SPLIT = int(df.shape[0]*0.8)
+# to make this script's output stable across runs
+np.random.seed(123)
 tf.random.set_seed(123)
 
+# To plot pretty figures
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+mpl.rc('axes', labelsize=14)
+mpl.rc('xtick', labelsize=12)
+mpl.rc('ytick', labelsize=12)
+
+# To use some specific method useful for this task
+from src.method_building import Prediction, create_csv
+
+
+learn = Prediction()
+# ===========================================================
+# PARAMETERS
+# ===========================================================
+EVALUATION_INTERVAL = 500
+EPOCHS = 20
+BATCH_SIZE = 156
+BUFFER_SIZE = 1000
+
+# ==============================================================
+# DATASET
+# ===============================================================
+df = pd.read_csv('../eplus_simulation/eplus/eplusout.csv')
+df = create_csv(df)
+TRAIN_SPLIT = int(df.shape[0]*0.8)  # 80% data train
 
 # =================================================================
 # Recurrent Neural Network(RNN): Long Short Term Memory(LSTM)
 # =================================================================
 
 
-"""
-# ============================================
-# Part 2: Forecast a multivariate TimeSeries
-
-In a multi-step prediction model, given a past history, the model needs to learn to predict a range of future values.
-Thus, unlike a single step model, where only a single future point is predicted, a multi-step model predict a sequence 
-of the future. For the multi-step model, the training data again consists of recordings over the past five days sampled
-every hour. However, here, the model needs to learn to predict the temperature for the next 12 hours. 
-Since an observation is taken every 10 minutes, the output is 72 predictions. For this task, the dataset needs to be 
-prepared accordingly, thus the first step is just to create it again, but with a different target window.
-# ============================================
-"""
 
 features_considered = ['Temp_ext[C]', 'Pr_ext[Pa]', 'SolarRadiation[W/m2]',
                        'InfHeatLoss_2[J]', 'InfAirChange_2[ach]', 'InfHeatLoss_3[J]',
@@ -54,17 +67,18 @@ features_considered = ['Temp_ext[C]', 'Pr_ext[Pa]', 'SolarRadiation[W/m2]',
     ]
 
 features = df[features_considered]
-features['Temp_in[C]'] = df[['Temp_in1[C]', 'Temp_in2[C]', 'Temp_in3[C]']].astype(float).mean(1)
-#features['Humidity_in[%]'] = df[['Humidity_1[%]', 'Humidity_2[%]', 'Humidity_3[%]']].astype(float).mean(1)
+#features['Temp_in[C]'] = df[['Temp_in1[C]', 'Temp_in2[C]', 'Temp_in3[C]']].astype(float).mean(1).copy()
+features = features.assign(Temp_in=df[['Temp_in1[C]', 'Temp_in2[C]', 'Temp_in3[C]']].astype(float).mean(1))
+features = features.rename(columns={'Temp_in': 'Temp_in[C]'})
 features.index = df.index
 
-
+# Standardization data
 dataset = features.values
-data_mean = dataset[:TRAIN_SPLIT].mean(axis=0)
-data_std = dataset[:TRAIN_SPLIT].std(axis=0)
-
-dataset = (dataset-data_mean)/data_std
-
+#scaler = preprocessing.StandardScaler().fit(dataset)
+#dataset_scaled = scaler.transform(dataset)
+dataset_mean = dataset[:TRAIN_SPLIT].mean(axis=0)
+dataset_std = dataset[:TRAIN_SPLIT].std(axis=0)
+dataset = (dataset-dataset_mean)/dataset_std
 
 past_history = 24*10  # 10 days history
 future_target = 24  # one-day prediction
@@ -74,11 +88,14 @@ x_train_multi, y_train_multi = learn.multivariate_data(dataset=dataset, target=d
                                                  end_index=TRAIN_SPLIT, history_size=past_history,
                                                  target_size=future_target, step=STEP)
 x_val_multi, y_val_multi = learn.multivariate_data(dataset=dataset, target=dataset[:, -1],
-                                             start_index=TRAIN_SPLIT, end_index=None, history_size=past_history,
+                                             start_index=(TRAIN_SPLIT - int(TRAIN_SPLIT*0.4)), end_index=(TRAIN_SPLIT), history_size=past_history,
+                                             target_size=future_target, step=STEP)
+x_test_multi, y_test_multi = learn.multivariate_data(dataset=dataset, target=dataset[:, -1],
+                                             start_index=(TRAIN_SPLIT+1), end_index=None, history_size=past_history,
                                              target_size=future_target, step=STEP)
 
 print('Single window of past history : {}'.format(x_train_multi[0].shape))
-print('\n Target temperature to predict : {}'.format(y_train_multi[0].shape))
+print('Target temperature to predict : {}'.format(y_train_multi[0].shape))
 
 train_data_multi = tf.data.Dataset.from_tensor_slices((x_train_multi, y_train_multi))
 train_data_multi = train_data_multi.cache().shuffle(BUFFER_SIZE).batch(BATCH_SIZE).repeat()
@@ -87,22 +104,28 @@ val_data_multi = tf.data.Dataset.from_tensor_slices((x_val_multi, y_val_multi))
 val_data_multi = val_data_multi.batch(BATCH_SIZE).repeat()
 
 
-#leaky_relu = tf.keras.layers.LeakyReLU(alpha=0.2)
+leaky_relu = tf.keras.layers.LeakyReLU(alpha=0.2)
 multi_step_model = tf.keras.models.Sequential()
-multi_step_model.add(tf.keras.layers.LSTM(32,
+multi_step_model.add(tf.keras.layers.LSTM(129,
                                           dropout=0.2,
                                           recurrent_dropout=0.5,
                                           return_sequences=True,
                                           input_shape=x_train_multi.shape[-2:]))
-multi_step_model.add(tf.keras.layers.LSTM(16,
-                                          dropout=0.2,
+multi_step_model.add(tf.keras.layers.LSTM(64,
+                                          dropout=0.1,
                                           recurrent_dropout=0.5,
-                                          activation='relu'))
-                                          #kernel_initializer='he_normal'))
+                                          activation=leaky_relu,
+                                          return_sequences=True,
+                                          kernel_initializer='he_normal'))
+multi_step_model.add(tf.keras.layers.LSTM(32,
+                                          dropout=0.1,
+                                          recurrent_dropout=0.5,
+                                          activation=leaky_relu,
+                                          kernel_initializer='he_normal'))
 
 multi_step_model.add(tf.keras.layers.Dense(future_target))
 
-multi_step_model.compile(optimizer=tf.keras.optimizers.RMSprop(learning_rate=0.0008, clipvalue=1.0), loss='mae')
+multi_step_model.compile(optimizer=tf.keras.optimizers.Nadam(learning_rate=0.001, clipvalue=1.0), loss='mae')
 
 
 multi_step_history = multi_step_model.fit(train_data_multi, epochs=EPOCHS,
@@ -110,10 +133,19 @@ multi_step_history = multi_step_model.fit(train_data_multi, epochs=EPOCHS,
                                           validation_data=val_data_multi,
                                           validation_steps=150)
 
-learn.plot_train_history(multi_step_history, 'lr_0.0008')
+learn.plot_train_history(multi_step_history, 'NAdam_lr_0.001')
 
 for x, y in val_data_multi.take(3):
     learn.multi_step_plot(x[0], y[0], multi_step_model.predict(x)[0])
+
+y_pred_train = multi_step_model.predict(x_train_multi)
+
+y_pred_test = multi_step_model.predict(x_test_multi)
+
+
+for i in range(3):
+    learn.multi_step_plot(x_test_multi[i], y_test_multi[i], y_pred_test[i])
+
 
 
 
@@ -151,15 +183,15 @@ test_gen = learn.generator(dataset, lookback=lookback,
 val_steps = (7008 - 6001 - lookback)
 test_steps = (int(df.shape[0]) - 7008 - lookback)
 
-
-leaky_relu = tf.keras.layers.LeakyReLU(alpha=0.2)
+leakly_relu = tf.keras.layers.LeakyReLU(alpha=0.2)
 multi_step_model = tf.keras.models.Sequential()
-multi_step_model.add(tf.keras.layers.GRU(32,
+multi_step_model.add(tf.keras.layers.GRU(64,
                                           dropout=0.2,
                                           recurrent_dropout=0.5,
                                           return_sequences=True,
                                           input_shape=(None, dataset.shape[-1])))
-multi_step_model.add(tf.keras.layers.GRU(16,
+
+multi_step_model.add(tf.keras.layers.GRU(32,
                                           dropout=0.2,
                                           recurrent_dropout=0.5,
                                           activation=leakly_relu,
@@ -172,7 +204,7 @@ multi_step_model.compile(optimizer=tf.keras.optimizers.RMSprop(clipvalue=1.0, le
 multi_step_history = multi_step_model.fit_generator(train_gen, epochs=EPOCHS,
                                           steps_per_epoch=EVALUATION_INTERVAL,
                                           validation_data=val_gen,
-                                          validation_steps=50)
+                                          validation_steps=150)
 
 learn.plot_train_history(multi_step_history, 'Multi-Step Training and validation loss')
 
@@ -201,8 +233,8 @@ ax2.grid(linestyle='--', linewidth=.4, which='both')
 plt.subplots_adjust(bottom=0.4, right=0.8, top=0.9, hspace=1)
 plt.savefig(fname='../../plots/prediction_model_error.png', dpi=400)
 plt.close()
-
 """
+
 
 
 

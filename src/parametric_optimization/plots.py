@@ -2,14 +2,14 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-pathf_0= '../files/outputs/outputs_60p_ch_twr0.csv'
+pathf_0= '../../files/outputs/outputs_60p_ch_twr0.csv'
 
-df_0 = pd.read_csv('../files/outputs/outputs_60p_ch_twr0.csv')
-df_1 = pd.read_csv('../files/outputs/outputs_60p_ch_twr1.csv')
-df_2 = pd.read_csv('../files/outputs/outputs_60p_ch_twr2.csv')
-df_3 = pd.read_csv('../files/outputs/outputs_60p_ch_twr3.csv')
-df_4 = pd.read_csv('../files/outputs/outputs_60p_ch_twr4.csv')
-df_5 = pd.read_csv('../files/outputs/outputs_60p_ch_twr5.csv')
+df_0 = pd.read_csv('../../files/outputs/outputs_60p_ch_twr0.csv')
+df_1 = pd.read_csv('../../files/outputs/outputs_60p_ch_twr1.csv')
+df_2 = pd.read_csv('../../files/outputs/outputs_60p_ch_twr2.csv')
+df_3 = pd.read_csv('../../files/outputs/outputs_60p_ch_twr3.csv')
+df_4 = pd.read_csv('../../files/outputs/outputs_60p_ch_twr4.csv')
+df_5 = pd.read_csv('../../files/outputs/outputs_60p_ch_twr5.csv')
 
 #parameters
 # 0.4 m,
@@ -75,5 +75,5 @@ ax2.set_ylabel('districtHeating [MWh]')
 ax2.legend(loc='upper left', bbox_to_anchor=(.8, -.5, 0.4, 0.4))
 ax2.grid(linestyle='--', linewidth=.4, which='both')
 plt.subplots_adjust(bottom=0.3, right=0.8, top=0.9, hspace=1)
-plt.savefig(fname='../plots/parametric_analysis_tw_on.png', dpi=500)
+plt.savefig(fname='../../plots/parametric_analysis_tw_on.png', dpi=500)
 plt.close()
