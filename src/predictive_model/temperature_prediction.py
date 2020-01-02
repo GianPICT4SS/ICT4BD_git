@@ -3,9 +3,9 @@ import sys
 assert sys.version_info >= (3, 5)
 
 # Scikit-Learn > 0.19 is required
-import sklearn
+#import sklearn
 from sklearn import preprocessing
-assert sklearn.__version__ >= "0.20"
+#assert sklearn.__version__ >= "0.20"
 
 # TensorFlow >= 2.0 is required
 import tensorflow as tf
@@ -109,16 +109,16 @@ val_data_multi = val_data_multi.batch(BATCH_SIZE).repeat()
 
 leaky_relu = tf.keras.layers.LeakyReLU(alpha=0.2)
 multi_step_model = tf.keras.models.Sequential()
-multi_step_model.add(tf.keras.layers.LSTM(100,
+multi_step_model.add(tf.keras.layers.LSTM(64,
                                           dropout=0.1,
                                           recurrent_dropout=0.3,
                                           return_sequences=True,
                                           input_shape=x_train_multi.shape[-2:]))
-multi_step_model.add(tf.keras.layers.LSTM(64,
-                                          dropout=0.1,
-                                          recurrent_dropout=0.3,
-                                          activation='relu',
-                                          return_sequences=True))
+#multi_step_model.add(tf.keras.layers.LSTM(64,
+#                                          dropout=0.1,
+#                                          recurrent_dropout=0.3,
+#                                          activation='relu',
+#                                          return_sequences=True))
                                           #kernel_initializer='he_normal'))
 multi_step_model.add(tf.keras.layers.LSTM(32,
                                           dropout=0.1,
@@ -132,15 +132,17 @@ print(multi_step_model.summary())
 
 
 #multi_step_model.compile(optimizer=tf.keras.optimizers.Nadam(), loss='mae')
-multi_step_model.compile(optimizer=tf.keras.optimizers.RMSprop(learning_rate=0.0001), loss='mae')
+multi_step_model.compile(optimizer=tf.keras.optimizers.RMSprop(learning_rate=0.0001), loss='mae',
+                         metrics=['accuracy'])
 
 
 multi_step_history = multi_step_model.fit(train_data_multi, epochs=EPOCHS,
                                           steps_per_epoch=EVALUATION_INTERVAL,
                                           validation_data=val_data_multi,
-                                          validation_steps=1000)
+                                          validation_steps=150,
+                                          batch_size=68)
 
-learn.plot_train_history(multi_step_history, 'NAdam')
+#learn.plot_train_history(multi_step_history, 'NAdam')
 learn.plot_train_history(multi_step_history, 'RMSprop_lr_0.0001')
 
 for x, y in val_data_multi.take(3):
