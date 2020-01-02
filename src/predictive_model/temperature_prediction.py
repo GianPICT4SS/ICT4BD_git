@@ -9,7 +9,7 @@ assert sklearn.__version__ >= "0.20"
 
 # TensorFlow >= 2.0 is required
 import tensorflow as tf
-from tensorflow import keras
+
 
 assert tf.__version__ >= "2.0"
 
@@ -33,14 +33,14 @@ mpl.rc('xtick', labelsize=12)
 mpl.rc('ytick', labelsize=12)
 
 # To use some specific method useful for this task
-from src.method_building import Prediction, create_csv
+from src.method_building import Prediction
 
 
 learn = Prediction()
 # ===========================================================
 # PARAMETERS
 # ===========================================================
-EVALUATION_INTERVAL = 500
+EVALUATION_INTERVAL = 270
 EPOCHS = 20
 BATCH_SIZE = 156
 BUFFER_SIZE = 1000
@@ -48,8 +48,8 @@ BUFFER_SIZE = 1000
 # ==============================================================
 # DATASET
 # ===============================================================
-df = pd.read_csv('../eplus_simulation/eplus/eplusout.csv')
-df = create_csv(df)
+df_ = pd.read_csv('../eplus_simulation/eplus/eplusout.csv')
+df = learn.create_csv(df_)
 TRAIN_SPLIT = int(df.shape[0]*0.8)  # 80% data train
 
 # =================================================================
@@ -58,12 +58,13 @@ TRAIN_SPLIT = int(df.shape[0]*0.8)  # 80% data train
 
 
 
-features_considered = ['Temp_ext[C]', 'Pr_ext[Pa]', 'SolarRadiation[W/m2]',
+features_considered = ['Temp_ext[C]', 'Pr_ext[Pa]', 'SolarRadiation[W/m2]', 'WindSpeed[m/s]', 'DirectSolarRadiation[W/m2]',
                        'InfHeatLoss_2[J]', 'InfAirChange_2[ach]', 'InfHeatLoss_3[J]',
                        'InfAirChange_3[ach]', 'InfHeatLoss_1[J]', 'InfAirChange_1[ach]',
                        'VentHeatLoss_2[J]', 'VentAirChange_2[ach]', 'VentHeatLoss_3[J]',
                        'VentAirChange_3[ach]', 'VentHeatLoss_1[J]', 'VentAirChange_1[ach]',
-                       'Humidity_1[%]', 'Humidity_2[%]', 'Humidity_3[%]'
+                       'Humidity_1[%]', 'Humidity_2[%]', 'Humidity_3[%]',
+
     ]
 
 features = df[features_considered]
@@ -83,6 +84,8 @@ dataset = (dataset-dataset_mean)/dataset_std
 past_history = 24*10  # 10 days history
 future_target = 24  # one-day prediction
 STEP = 1
+
+
 
 x_train_multi, y_train_multi = learn.multivariate_data(dataset=dataset, target=dataset[:, -1], start_index=0,
                                                  end_index=TRAIN_SPLIT, history_size=past_history,
@@ -106,34 +109,39 @@ val_data_multi = val_data_multi.batch(BATCH_SIZE).repeat()
 
 leaky_relu = tf.keras.layers.LeakyReLU(alpha=0.2)
 multi_step_model = tf.keras.models.Sequential()
-multi_step_model.add(tf.keras.layers.LSTM(129,
-                                          dropout=0.2,
-                                          recurrent_dropout=0.5,
+multi_step_model.add(tf.keras.layers.LSTM(100,
+                                          dropout=0.1,
+                                          recurrent_dropout=0.3,
                                           return_sequences=True,
                                           input_shape=x_train_multi.shape[-2:]))
 multi_step_model.add(tf.keras.layers.LSTM(64,
                                           dropout=0.1,
-                                          recurrent_dropout=0.5,
-                                          activation=leaky_relu,
-                                          return_sequences=True,
-                                          kernel_initializer='he_normal'))
+                                          recurrent_dropout=0.3,
+                                          activation='relu',
+                                          return_sequences=True))
+                                          #kernel_initializer='he_normal'))
 multi_step_model.add(tf.keras.layers.LSTM(32,
                                           dropout=0.1,
-                                          recurrent_dropout=0.5,
-                                          activation=leaky_relu,
-                                          kernel_initializer='he_normal'))
+                                          recurrent_dropout=0.3,
+                                          activation='relu'))
+                                          #kernel_initializer='he_normal'))
 
 multi_step_model.add(tf.keras.layers.Dense(future_target))
 
-multi_step_model.compile(optimizer=tf.keras.optimizers.Nadam(learning_rate=0.001, clipvalue=1.0), loss='mae')
+print(multi_step_model.summary())
+
+
+#multi_step_model.compile(optimizer=tf.keras.optimizers.Nadam(), loss='mae')
+multi_step_model.compile(optimizer=tf.keras.optimizers.RMSprop(learning_rate=0.0001), loss='mae')
 
 
 multi_step_history = multi_step_model.fit(train_data_multi, epochs=EPOCHS,
                                           steps_per_epoch=EVALUATION_INTERVAL,
                                           validation_data=val_data_multi,
-                                          validation_steps=150)
+                                          validation_steps=1000)
 
-learn.plot_train_history(multi_step_history, 'NAdam_lr_0.001')
+learn.plot_train_history(multi_step_history, 'NAdam')
+learn.plot_train_history(multi_step_history, 'RMSprop_lr_0.0001')
 
 for x, y in val_data_multi.take(3):
     learn.multi_step_plot(x[0], y[0], multi_step_model.predict(x)[0])
@@ -145,8 +153,6 @@ y_pred_test = multi_step_model.predict(x_test_multi)
 
 for i in range(3):
     learn.multi_step_plot(x_test_multi[i], y_test_multi[i], y_pred_test[i])
-
-
 
 
 
@@ -185,14 +191,14 @@ test_steps = (int(df.shape[0]) - 7008 - lookback)
 
 leakly_relu = tf.keras.layers.LeakyReLU(alpha=0.2)
 multi_step_model = tf.keras.models.Sequential()
-multi_step_model.add(tf.keras.layers.GRU(64,
-                                          dropout=0.2,
+multi_step_model.add(tf.keras.layers.GRU(32,
+                                          dropout=0.1,
                                           recurrent_dropout=0.5,
                                           return_sequences=True,
                                           input_shape=(None, dataset.shape[-1])))
 
-multi_step_model.add(tf.keras.layers.GRU(32,
-                                          dropout=0.2,
+multi_step_model.add(tf.keras.layers.GRU(64,
+                                          dropout=0.1,
                                           recurrent_dropout=0.5,
                                           activation=leakly_relu,
                                          kernel_initializer='he_normal'))
@@ -204,7 +210,7 @@ multi_step_model.compile(optimizer=tf.keras.optimizers.RMSprop(clipvalue=1.0, le
 multi_step_history = multi_step_model.fit_generator(train_gen, epochs=EPOCHS,
                                           steps_per_epoch=EVALUATION_INTERVAL,
                                           validation_data=val_gen,
-                                          validation_steps=150)
+                                          validation_steps=val_steps)
 
 learn.plot_train_history(multi_step_history, 'Multi-Step Training and validation loss')
 
@@ -234,61 +240,6 @@ plt.subplots_adjust(bottom=0.4, right=0.8, top=0.9, hspace=1)
 plt.savefig(fname='../../plots/prediction_model_error.png', dpi=400)
 plt.close()
 """
-
-
-
-
-
-""" dropout-regularized Stacked GRU model
-model = Sequential()
-model.add(layers.GRU(32,
-                     dropout=0.2,
-                     recurrent_dropout=0.2,
-                     input_shape=(None, df.shape[-1])))
-model.add(layers.Dense(1))
-
-model.compile(optimizer=RMSprop(), loss='mae')
-history = model.fit_generator(train_gen,
-                              steps_per_epoch=400,
-                              epochs=20,
-                              validation_data=val_gen,
-                              validation_steps=val_steps
-                              )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-model = Sequential()
-model.add(layers.GRU(32,
-                     dropout=0.1,
-                     recurrent_dropout=0.5,
-                     return_sequences=True,
-                     input_shape=(None, df.shape[-1])))
-model.add(layers.GRU(64, activation='relu',
-                     dropout=0.1,
-                     recurrent_dropout=0.5))
-model.add(layers.Dense(1))
-
-model.compile(optimizer=RMSprop(), loss='mae')
-history = model.fit_generator(train_gen,
-                              steps_per_epoch=200,
-                              epochs=20,
-                              validation_data=val_gen,
-                              validation_steps=val_steps)
-"""
-
 
 
 

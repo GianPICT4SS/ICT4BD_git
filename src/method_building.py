@@ -350,6 +350,8 @@ class Prediction():
                'Environment:Site Diffuse Solar Radiation Rate per Area [W/m2](Hourly)',
                'Environment:Site Solar Azimuth Angle [deg](Hourly)',
                'Environment:Site Solar Altitude Angle [deg](Hourly)',
+               'Environment:Site Wind Speed [m/s](Hourly)',
+               'Environment:Site Direct Solar Radiation Rate per Area [W/m2](Hourly)',
                'BLOCCO1:ZONA2:Zone Operative Temperature [C](Hourly)',
                'BLOCCO1:ZONA3:Zone Operative Temperature [C](Hourly)',
                'BLOCCO1:ZONA1:Zone Operative Temperature [C](Hourly)',
@@ -383,6 +385,8 @@ class Prediction():
             'Environment:Site Diffuse Solar Radiation Rate per Area [W/m2](Hourly)':'SolarRadiation[W/m2]',
             'Environment:Site Solar Azimuth Angle [deg](Hourly)':'AzimuthAngle[deg]',
             'Environment:Site Solar Altitude Angle [deg](Hourly)':'AltitudeAngle[deg]',
+            'Environment:Site Wind Speed [m/s](Hourly)':'WindSpeed[m/s]',
+            'Environment:Site Direct Solar Radiation Rate per Area [W/m2](Hourly)':'DirectSolarRadiation[W/m2]',
             'BLOCCO1:ZONA2:Zone Operative Temperature [C](Hourly)':'Temp_in2[C]',
             'BLOCCO1:ZONA3:Zone Operative Temperature [C](Hourly)':'Temp_in3[C]',
             'BLOCCO1:ZONA1:Zone Operative Temperature [C](Hourly)':'Temp_in1[C]',
@@ -414,7 +418,7 @@ class Prediction():
         df_z['date'] = df['Date/Time'].astype('O')
         df_z['date'] = df_z['date'].map(lambda x: x if '24:00' not in x else x.replace('24:00', '00:00'))
         df_z = df_z.set_index('date')
-        df_z = df_z.set_index(pd.to_datetime('2018/' + df_z.index))
+        df_z = df_z.set_index(pd.to_datetime('2017/' + df_z.index))
 
         return df_z
 
