@@ -82,7 +82,7 @@ class Prediction():
         return np.array(data), np.array(labels)
 
     @classmethod
-    def multi_step_plot(cls, history, true_future, prediction):
+    def multi_step_plot(cls, history, true_future, prediction, model='LSTM'):
         plt.figure(figsize=(12, 6))
         num_in = cls.create_time_steps(len(history))
         num_out = len(true_future)
@@ -94,16 +94,16 @@ class Prediction():
             plt.plot(np.arange(num_out), np.array(prediction), 'ro',
                      label='Predicted Future')
         plt.legend(loc='upper left')
-        plt.title('Temperature Prediction (LSTM)')
+        plt.title(f'Temperature Prediction {model}')
 
         plt.show()
 
     @classmethod
     def plot_train_history(cls, history, title):
 
-        if 'acc' in history.history.keys():
-            acc = history.history['acc']
-            val_acc = history.history['val_acc']
+        if 'accuracy' in history.history.keys():
+            acc = history.history['accuracy']
+            val_acc = history.history['val_accuracy']
             loss = history.history['loss']
             val_loss = history.history['val_loss']
 
@@ -113,12 +113,16 @@ class Prediction():
             ax1.plot(epochs, acc, 'bo', label='Training acc')
             ax1.plot(epochs, val_acc, 'b', label='Validation acc')
             ax1.set_title('Training and validation accuracy')
+            ax1.set_xlabel('Epochs')
+            ax1.set_ylabel('Accuracy')
             ax1.legend()
             ax1.grid(linestyle='--', linewidth=.4, which='both')
 
             ax2.plot(epochs, loss, 'bo', label='Training loss')
             ax2.plot(epochs, val_loss, 'b', label='Validation loss')
             ax2.set_title(title)
+            ax2.set_xlabel('Epochs')
+            ax2.set_ylabel('Loss')
             ax2.legend()
             ax2.grid(linestyle='--', linewidth=.4, which='both')
             plt.subplots_adjust(bottom=0.4, right=0.8, top=0.9, hspace=1)
@@ -133,7 +137,7 @@ class Prediction():
             ax2.plot(epochs, loss, 'b.-', label='Training loss')
             ax2.plot(epochs, val_loss, 'r.-', label='Validation loss')
             ax2.set_title(title)
-            ax2.gca().xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
+            plt.gca().xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
             plt.axis([1, 20, 0, 0.05])
             ax2.set_xlabel('Epochs')
             ax2.set_ylabel('Loss')
@@ -352,6 +356,8 @@ class Prediction():
                'Environment:Site Solar Altitude Angle [deg](Hourly)',
                'Environment:Site Wind Speed [m/s](Hourly)',
                'Environment:Site Direct Solar Radiation Rate per Area [W/m2](Hourly)',
+               'DistrictCooling:Facility [J](Hourly)',
+               'DistrictHeating:Facility [J](Hourly)',
                'BLOCCO1:ZONA2:Zone Operative Temperature [C](Hourly)',
                'BLOCCO1:ZONA3:Zone Operative Temperature [C](Hourly)',
                'BLOCCO1:ZONA1:Zone Operative Temperature [C](Hourly)',
@@ -387,6 +393,8 @@ class Prediction():
             'Environment:Site Solar Altitude Angle [deg](Hourly)':'AltitudeAngle[deg]',
             'Environment:Site Wind Speed [m/s](Hourly)':'WindSpeed[m/s]',
             'Environment:Site Direct Solar Radiation Rate per Area [W/m2](Hourly)':'DirectSolarRadiation[W/m2]',
+            'DistrictCooling:Facility [J](Hourly)': 'Cooling [J]',
+            'DistrictHeating:Facility [J](Hourly)': 'Heating [J]',
             'BLOCCO1:ZONA2:Zone Operative Temperature [C](Hourly)':'Temp_in2[C]',
             'BLOCCO1:ZONA3:Zone Operative Temperature [C](Hourly)':'Temp_in3[C]',
             'BLOCCO1:ZONA1:Zone Operative Temperature [C](Hourly)':'Temp_in1[C]',

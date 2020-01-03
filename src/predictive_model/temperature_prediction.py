@@ -35,7 +35,7 @@ learn = Prediction()
 # ===========================================================
 EVALUATION_INTERVAL = 500
 EPOCHS = 20
-BATCH_SIZE = 126
+BATCH_SIZE = 56
 BUFFER_SIZE = 5000
 
 # ==============================================================
@@ -54,6 +54,7 @@ TRAIN_SPLIT = int(df.shape[0]*0.8)  # 80% data train
 features_considered = ['Temp_ext[C]', 'Pr_ext[Pa]', 'SolarRadiation[W/m2]', 'WindSpeed[m/s]',
                        'DirectSolarRadiation[W/m2]', 'AzimuthAngle[deg]', 'AltitudeAngle[deg]',
                        'Humidity_1[%]', 'Humidity_2[%]', 'Humidity_3[%]',
+                       'Heating [J]', 'Cooling [J]'
 
     ]
 
@@ -62,6 +63,7 @@ features = df[features_considered]
 features = features.assign(Temp_in=df[['Temp_in1[C]', 'Temp_in2[C]', 'Temp_in3[C]']].astype(float).mean(1))
 features = features.rename(columns={'Temp_in': 'Temp_in[C]'})
 features.index = df.index
+
 
 # Standardization data
 dataset = features.values
@@ -102,19 +104,19 @@ val_data_multi = val_data_multi.batch(BATCH_SIZE).repeat()
 
 leaky_relu = tf.keras.layers.LeakyReLU(alpha=0.2)
 multi_step_model = tf.keras.models.Sequential()
-multi_step_model.add(tf.keras.layers.LSTM(100,
-                                          dropout=0.1,
-                                          recurrent_dropout=0.3,
+multi_step_model.add(tf.keras.layers.GRU(100,
+                                          #dropout=0.1,
+                                          #recurrent_dropout=0.3,
                                           return_sequences=True,
                                           input_shape=x_train_multi.shape[-2:]))
-multi_step_model.add(tf.keras.layers.LSTM(32,
+multi_step_model.add(tf.keras.layers.GRU(32,
                                           #dropout=0.1,
                                           #recurrent_dropout=0.3,
                                           activation='relu',
                                           return_sequences=True))
                                           #kernel_initializer='he_normal'))
-multi_step_model.add(tf.keras.layers.LSTM(64,
-                                          dropout=0.1,
+multi_step_model.add(tf.keras.layers.GRU(64,
+                                          #dropout=0.1,
                                           activation='relu'))
                                           #kernel_initializer='he_normal'))
 
@@ -131,16 +133,29 @@ multi_step_model.compile(optimizer=tf.keras.optimizers.RMSprop(learning_rate=0.0
 multi_step_history = multi_step_model.fit(train_data_multi, epochs=EPOCHS,
                                           steps_per_epoch=EVALUATION_INTERVAL,
                                           validation_data=val_data_multi,
-                                          validation_steps=150)
+                                          validation_steps=300)
 
-results = multi_step_model.evaluate(val_data_multi)
+results = multi_step_model.evaluate(x_val_multi, y_val_multi)
 print('Test Acc.: {:.2f}%'.format(results[1]*100))
 
 #learn.plot_train_history(multi_step_history, 'NAdam')
-learn.plot_train_history(multi_step_history, 'RMSprop_lr_0.0001')
+learn.plot_train_history(multi_step_history, 'RMSprop_lr_0.001')
 
 for x, y in val_data_multi.take(3):
-    learn.multi_step_plot(x[0], y[0], multi_step_model.predict(x)[0])
+    learn.multi_step_plot(x, y, multi_step_model.predict(x)[0], model='GRU_nodropout')
+
+def basic_loss_function(y_true, y_pred):
+    return tf.math.reduce_mean(y_true - y_pred)
+
+y_pred_test = multi_step_model.predict(x_val_multi)
+y_pred_train = multi_step_model.predict(x_train_multi)
+
+reduce_mean_test = basic_loss_function(y_val_multi, y_pred_test)
+reduce_mean_train = basic_loss_function(y_train_multi, y_pred_train)
+
+print(f'error train: {reduce_mean_train}; error test: {reduce_mean_test}')
+
+
 
 
 
