@@ -66,9 +66,14 @@ features.index = df.index
 
 
 # Standardization data
+target = features.pop('Temp_in[C]').values
+target = target.reshape(target.shape[0], 1)
 dataset = features.values
-scaler = preprocessing.StandardScaler().fit(dataset)
-dataset = scaler.transform(dataset)
+
+scaler_ds = preprocessing.StandardScaler().fit(dataset)
+scaler_tar = preprocessing.StandardScaler().fit(target)
+dataset = scaler_ds.transform(dataset)
+target = scaler_tar.transform(target)
 #dataset_mean = dataset[:TRAIN_SPLIT].mean(axis=0)
 #dataset_std = dataset[:TRAIN_SPLIT].std(axis=0)
 #dataset = (dataset-dataset_mean)/dataset_std
@@ -79,10 +84,10 @@ STEP = 1
 
 
 
-x_train_multi, y_train_multi = learn.multivariate_data(dataset=dataset, target=dataset[:, -1], start_index=0,
+x_train_multi, y_train_multi = learn.multivariate_data(dataset=dataset, target=target, start_index=0,
                                                  end_index=TRAIN_SPLIT, history_size=past_history,
                                                  target_size=future_target, step=STEP)
-x_val_multi, y_val_multi = learn.multivariate_data(dataset=dataset, target=dataset[:, -1],
+x_val_multi, y_val_multi = learn.multivariate_data(dataset=dataset, target=target,
                                              start_index=TRAIN_SPLIT, end_index=None, history_size=past_history,
                                              target_size=future_target, step=STEP)
 
@@ -104,19 +109,20 @@ val_data_multi = val_data_multi.batch(BATCH_SIZE).repeat()
 
 leaky_relu = tf.keras.layers.LeakyReLU(alpha=0.2)
 multi_step_model = tf.keras.models.Sequential()
-multi_step_model.add(tf.keras.layers.GRU(100,
-                                          #dropout=0.1,
-                                          #recurrent_dropout=0.3,
+multi_step_model.add(tf.keras.layers.GRU(91,
+                                          dropout=0.05,
+                                          recurrent_dropout=0.2,
                                           return_sequences=True,
                                           input_shape=x_train_multi.shape[-2:]))
-multi_step_model.add(tf.keras.layers.GRU(32,
-                                          #dropout=0.1,
-                                          #recurrent_dropout=0.3,
+multi_step_model.add(tf.keras.layers.GRU(65,
+                                          dropout=0.05,
+                                          recurrent_dropout=0.2,
                                           activation='relu',
                                           return_sequences=True))
                                           #kernel_initializer='he_normal'))
-multi_step_model.add(tf.keras.layers.GRU(64,
-                                          #dropout=0.1,
+multi_step_model.add(tf.keras.layers.GRU(39,
+                                          dropout=0.05,
+                                          recurrent_dropout=0.2,
                                           activation='relu'))
                                           #kernel_initializer='he_normal'))
 
@@ -133,7 +139,7 @@ multi_step_model.compile(optimizer=tf.keras.optimizers.RMSprop(learning_rate=0.0
 multi_step_history = multi_step_model.fit(train_data_multi, epochs=EPOCHS,
                                           steps_per_epoch=EVALUATION_INTERVAL,
                                           validation_data=val_data_multi,
-                                          validation_steps=300)
+                                          validation_steps=50)
 
 results = multi_step_model.evaluate(x_val_multi, y_val_multi)
 print('Test Acc.: {:.2f}%'.format(results[1]*100))
@@ -142,13 +148,23 @@ print('Test Acc.: {:.2f}%'.format(results[1]*100))
 learn.plot_train_history(multi_step_history, 'RMSprop_lr_0.001')
 
 for x, y in val_data_multi.take(3):
-    learn.multi_step_plot(x, y, multi_step_model.predict(x)[0], model='GRU_nodropout')
+    y_ = multi_step_model.predict(x)
+    y_ = scaler_tar.inverse_transform(y_)
+    x = scaler_ds.inverse_transform(x[0])
+    y = scaler_tar.inverse_transform(y[0])
+    learn.multi_step_plot(x, y, y_[0], model='GRU_dropout')
 
 def basic_loss_function(y_true, y_pred):
     return tf.math.reduce_mean(y_true - y_pred)
 
 y_pred_test = multi_step_model.predict(x_val_multi)
 y_pred_train = multi_step_model.predict(x_train_multi)
+
+y_pred_train = scaler_tar.inverse_transform(y_pred_train)
+y_pred_test = scaler_tar.inverse_transform(y_pred_test)
+
+y_val_multi = scaler_tar.inverse_transform(y_val_multi)
+y_train_multi = scaler_tar.inverse_transform(y_train_multi)
 
 reduce_mean_test = basic_loss_function(y_val_multi, y_pred_test)
 reduce_mean_train = basic_loss_function(y_train_multi, y_pred_train)

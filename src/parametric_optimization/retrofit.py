@@ -1,3 +1,8 @@
+"""This script makes a parametric analysis. Given the IDF and the relative EPW files, it must be specify the type of
+parameters to change and calling the parametric_analysis method of the class Prediction. For each simulation a
+energy signature is done, in order to see the effect on the save energy capacity of the building. The output of
+the simulatiom are saved as several plots. """
+
 from src.method_building import Prediction
 
 

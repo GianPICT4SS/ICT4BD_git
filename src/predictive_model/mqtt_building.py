@@ -8,7 +8,7 @@ from queue import Queue
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s : %(message)s',
                     datefmt='%d/%m/%Y %H:%M ',
-                    level=logging.DEBUG)
+                    level=logging.INFO)
 
 logger = logging.getLogger(__name__)
 
@@ -256,12 +256,12 @@ class Building_subscriber():
 
 if __name__ == "__main__":
 
-    pub = Building_publisher(clientID="pub_1", topic="AulaMagna", qos=2)
-    start = int(datetime.now().strftime("%H%M"))
+    pub = Building_publisher(clientID="pub_1", topic="Building", qos=2)
+    start = int(datetime.now().strftime("%H:%M"))
     i = True
     pub.start()
     while i:
-        end = int(datetime.now().strftime("%H%M"))
+        end = int(datetime.now().strftime("%H:%M"))
         end_ = datetime.now().strftime("%Y-%m-%d" + "|" + "%H:%M:%S")
         dict_OFF = {'Time': end_, 'Payload': 0}
         dict_ON = {'Time': end_, 'Payload': 1}

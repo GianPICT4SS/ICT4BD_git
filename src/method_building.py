@@ -26,7 +26,7 @@ import logging
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s : %(message)s',
                     datefmt='%d/%m/%Y %H:%M ',
-                    level=logging.DEBUG)
+                    level=logging.INFO)
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +94,9 @@ class Prediction():
             plt.plot(np.arange(num_out), np.array(prediction), 'ro',
                      label='Predicted Future')
         plt.legend(loc='upper left')
-        plt.title(f'Temperature Prediction {model}')
+        plt.xlabel('Timestemp')
+        plt.ylabel('Temperature [C°]')
+        plt.title(f'Mean Indoor Temperature Prediction {model}')
 
         plt.show()
 
@@ -292,7 +294,7 @@ class Prediction():
         parameters = [Parameter(selector=x) for x in ls_fp]
 
         if dinamic_parameter['object_name'] == 'Simple 1001':
-            #logger.info(f"Parametric analysis for {dinamic_parameter['object_name']} will start.")
+            logger.info(f"Parametric analysis for {dinamic_parameter['object_name']} will start.")
             range_ufw = np.linspace(-5, -0.3, n_points)
             dict_ = {}
             for j in range(6):
@@ -317,7 +319,7 @@ class Prediction():
                 df_samples['Electricity:Facility'] = outputs['Electricity:Facility']
                 df_samples.to_csv('../../files/outputs/outputs_60p_ch_ufw' + str(j) + '.csv')
         elif dinamic_parameter['class_name'] == 'Material':
-            #logger.info(f"Parametric analysis for {dinamic_parameter['object_name']} will start.")
+            logger.info(f"Parametric analysis for {dinamic_parameter['object_name']} will start.")
             range_t = np.linspace(0.01, 0.5, n_points)  # metri
             dict_ = {}
             for j in range(6):
