@@ -28,14 +28,14 @@ dict_ = {'Payload': {}}
 
 
 for i in range(df.shape[0]-1):
-    row = df.iloc[0:i+1, :]
+    row = df.iloc[i:i+1, :]
     date = row.index.format('str')[1]
     dict_['Payload']['Time'] = date
     for col in columns:
         dict_['Payload'][col] = row[col].to_json()
     msg = json.dumps(dict_)
     pub.publish(msg=msg)
-    time.sleep(3)
+    time.sleep(1.5)
 pub.stop()
 
 
