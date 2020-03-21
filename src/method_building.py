@@ -19,7 +19,7 @@ import eppy
 from eppy.modeleditor import IDF
 from besos import eppy_funcs as ef
 from besos.evaluator import EvaluatorEP
-from besos.parameters import FieldSelector, Parameter, expand_plist
+from besos.parameters import FieldSelector, Parameter, expand_plist, CategoryParameter, wwr
 from besos.problem import EPProblem
 
 import logging
@@ -290,19 +290,24 @@ class Prediction():
                             field_name=dinamic_parameter['field_name'])
 
         ls_fp.append(d_par)
+        wwr_list = [0.15, 0.5, 0.9]
+        wwr_range = CategoryParameter(options=wwr_list)
+        w_t_r = wwr(wwr_range)
+        ls_fp.append(w_t_r)
 
         parameters = [Parameter(selector=x) for x in ls_fp]
 
         if dinamic_parameter['object_name'] == 'Simple 1001':
-            logger.info(f"Parametric analysis for {dinamic_parameter['object_name']} will start.")
+            logger.info(f"Parametric analysis for {dinamic_parameter['object_name']} will start.") # U-factor as dy par
             range_ufw = np.linspace(-5, -0.3, n_points)
             dict_ = {}
             for j in range(6):
                 for i in range(len(fixed_parameters)):
                     #dict_[parameters[i].selector.object_name] = [((i+2)**2*0.1)]*n_points
                     dict_[parameters[i].selector.object_name] = [(j+1)*0.1]*n_points
+                dict_[parameters[-1].selector.object_name] = wwr_list  # add wwr_list associated with wwr par
                 df_samples = pd.DataFrame.from_dict(dict_)
-                df_samples[parameters[len(fixed_parameters)].selector.object_name] = range_ufw*-1
+                df_samples[parameters[len(fixed_parameters)-1].selector.object_name] = range_ufw*-1  #take dy-par Ufactor
                 problem = EPProblem(parameters, objectives)
                 evaluator = EvaluatorEP(problem, building, epw_file=epw_path, out_dir='../../files/out_dir', err_dir='../../files/err_dir')
                 outputs = evaluator.df_apply(df_samples, keep_input=True)
@@ -328,8 +333,9 @@ class Prediction():
                         dict_[parameters[i].selector.object_name] = [((j + 2) ** 2 * 0.1)] * n_points
                     else:
                         dict_[parameters[i].selector.object_name] = [(j + 1) * 0.1] * n_points
+                dict_[parameters[-1].selector.object_name] = wwr_list
                 df_samples = pd.DataFrame.from_dict(dict_)
-                df_samples[parameters[len(fixed_parameters)].selector.object_name] = range_t
+                df_samples[parameters[len(fixed_parameters)-1].selector.object_name] = range_t
                 problem = EPProblem(parameters, objectives)
                 evaluator = EvaluatorEP(problem, building, epw=epw_path, out_dir='../../files/out_dir', err_dir='../../files/err_dir')
                 outputs = evaluator.df_apply(df_samples, keep_input=True)
