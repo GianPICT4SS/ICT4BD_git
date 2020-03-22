@@ -15,7 +15,7 @@ learn = Prediction()
 
 
 df = pd.read_csv('../eplus_simulation/eplus/eplusout.csv')
-print('DATASET CARICATO')
+print('DATASET READY')
 # Create a user csv
 df = learn.create_csv(df)
 columns = df.columns
@@ -26,16 +26,14 @@ pub = Building_publisher(clientID='Office_ON', topic='OFFICE', qos=0)
 pub.start()
 dict_ = {'Payload': {}}
 
-
 for i in range(df.shape[0]-1):
-    row = df.iloc[i:i+1, :]
+    row = df.iloc[i, :]
     date = row.index.format('str')[1]
     dict_['Payload']['Time'] = date
     for col in columns:
-        dict_['Payload'][col] = row[col].to_json()
-    msg = json.dumps(dict_)
+        dict_['Payload'][col] = row[col]
+    msg = json.dumps(dict_, indent=4)
     pub.publish(msg=msg)
-    time.sleep(1.5)
+    time.sleep(3)
 pub.stop()
-
 

@@ -13,9 +13,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s : %(message)s
 logger = logging.getLogger(__name__)
 
 class Building_publisher():
-
     def __init__(self, clientID, broker="mqtt.eclipse.org", port=1883, topic="", qos=1):
-
         self.clientID_ = clientID
         self.broker_ = broker
         self.port_ = port
@@ -109,13 +107,11 @@ class Building_publisher():
             # to reconnect.
 
     def start(self):
-
         self.mqtt_client.connect(host=self.broker_, port=self.port_)
         self.mqtt_client.loop_start()
         logger.info(f"Client {self.clientID_} connected to the Broker {self.broker_}")
 
     def stop(self):
-
         self.mqtt_client.loop_stop()
         self.mqtt_client.disconnect()
         logger.info(f"Client {self.clientID_} disconnected from the Broker")
@@ -125,11 +121,8 @@ class Building_subscriber():
     """Class Led_subscriber: its instances can connect to the broker and subscriber to some topic"""
 
     msg_body = {}
-
-
-
     def __init__(self, clientID, broker="mqtt.eclipse.org", port=1883, topic="", qos=1):
-
+        self.msg_body = {}
         self.clientID_ = clientID
         self.broker_ = broker
         self.port_ = port
@@ -143,8 +136,6 @@ class Building_subscriber():
         self.mqtt_client.on_message = self.OnMessage
         self.mqtt_client.on_disconnect = self.OnDisconnect
         logger.info(f"User {self.clientID_} initialized.")
-
-
 
     def OnConnect(self, mqtt_client, userdata, flags, rc):
         """ myOnConnect function called by on_connect callback:
@@ -188,30 +179,20 @@ class Building_subscriber():
 
 
     def subscribe(self):
-
         self.mqtt_client.subscribe(topic=self.topic_, qos=self.qos_)
         self.isSubscribe_ = True
         logger.info(f"Client {self.clientID_} subscribe to the topic: {self.topic_}")
 
-
-
-
-
     def OnMessage(self, client, userdata, msg):
-        global msg_body
+        # global msg_body
         get_time = datetime.now()
         current_time = get_time.strftime("%Y-%m-%d %H:%M:%S")
-        print("--------------------------------------------------------------------")
-        print("message received: ", str(msg.payload.decode("utf-8")))
-        print("at time: " + str(current_time))
-        print("--------------------------------------------------------------------")
-        msg_body = dict(json.loads(msg.payload.decode("utf-8")))
-
-
-
-
-
-
+        # print("--------------------------------------------------------------------")
+        # print("message received: ", str(msg.payload.decode("utf-8")))
+        # print("at time: " + str(current_time))
+        # print("--------------------------------------------------------------------")
+        print('Message Received')
+        self.msg_body = json.loads(msg.payload)
 
     def OnDisconnect(self, mqtt_client, userdata, rc):
         """ myOnDisconnect function called by on_disconnect callback:

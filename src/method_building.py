@@ -34,7 +34,6 @@ logger = logging.getLogger(__name__)
 
 class Prediction():
 
-
     @classmethod
     def create_time_steps(cls, length):
         return list(range(-length, 0))
