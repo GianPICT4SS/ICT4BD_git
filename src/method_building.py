@@ -17,9 +17,11 @@ import statsmodels.api as sm
 
 import eppy
 from eppy.modeleditor import IDF
+from geomeppy import IDF as geom_IDF
 from besos import eppy_funcs as ef
+from besos import sampling
 from besos.evaluator import EvaluatorEP
-from besos.parameters import FieldSelector, Parameter, expand_plist, CategoryParameter, wwr
+from besos.parameters import RangeParameter, FieldSelector, FilterSelector, Parameter, expand_plist, wwr, CategoryParameter, GenericSelector
 from besos.problem import EPProblem
 
 import logging
@@ -537,6 +539,244 @@ class Prediction():
 
         return ls_r
 
+class Optimal_config :
+    
+    def __init__(self,idf,epw):
+        self.building = ef.get_building(idf)
+        self.name = os.path.basename(idf).replace('.idf','')
+        self.epw = epw
+        self.evaluation_output = '../../files/outputs/'+self.name+'_DB.xlsx'
+        IDD_file = '/usr/local/EnergyPlus-9-0-1/Energy+.idd'
+
+        self.energy_evaluator(self.building)
+        self.correlation(self.evaluation_output)
+        self.plotting(self.evaluation_output)
+        self.final_idf(idf,IDD_file)
+
+    def energy_evaluator(self,building):
+        
+        list1=np.linspace(0.01,0.35,6,endpoint=False)
+        list2=np.linspace(0.9,6,6,endpoint=False)
+        list1 = np.round(list1,decimals=3)
+        list2 = np.round(list2,decimals=2)
+        wwr_list = [0.15,0.5,0.9]
+        
+
+        insul_range = CategoryParameter(options=list1)
+        U_window_range = CategoryParameter(options=list2)
+        wwr_range = CategoryParameter(options=wwr_list)
+        insulation_wall = FieldSelector(class_name='Material', object_name='SuperInsulating_00795', field_name='Thickness')
+        insulation_roof = FieldSelector(class_name='Material', object_name='SuperInsulating_01445', field_name='Thickness')
+        glazing = FieldSelector(class_name='WindowMaterial:SimpleGlazingSystem',object_name ='Simple 1001',field_name ='U-Factor')
+        
+        insul_param_wall = Parameter(selector=insulation_wall,value_descriptor=insul_range,name ='Insulation Thickness wall')
+        insul_param_roof = Parameter(selector=insulation_roof,value_descriptor=insul_range,name ='Insulation Thickness roof')
+        U_window_param = Parameter(selector=glazing,value_descriptor=U_window_range,name ='windows-U-factor')
+        windows_to_wall = wwr(wwr_range) #this function equivalent to fieldselctor+parameter functions 
+        
+        #CREATION OF THE PROBLEM
+        parameters=[insul_param_wall]+[windows_to_wall]+[U_window_param]+[insul_param_roof]
+        objectives = ['Electricity:Facility','DistrictHeating:Facility','DistrictCooling:Facility'] # these get made into `MeterReader` or `VariableReader`
+        problem = EPProblem(parameters, objectives)
+        samples = create_samples(wwr_list,list1,list1,list2)
+        
+        #CREATING EVALUATIONS
+        evaluator = EvaluatorEP(problem, building, out_dir='OUTPUTS', err_dir='ERR_OUTPUTS' ,epw=self.epw) # evaluator = problem + building
+        outputs = evaluator.df_apply(samples, keep_input=True)
+        outputs = outputs.sort_values(by =['Insulation Thickness wall','windows-U-factor','Insulation Thickness roof'])
+        
+        outputs.to_excel(self.evaluation_output)
+        print(outputs)
+        print(outputs.describe())
+    
+
+    def correlation (self,file):
+        
+        out = pd.read_excel(file)
+        out= out.drop(columns='Unnamed: 0')
+        corr = out.corr()
+        labels = list(corr.keys())
+        corr_matrix = corr.to_numpy()
+        corr_matrix = np.around(corr_matrix,decimals=3)
+        print(corr_matrix)
+
+        
+        fig, ax = plt.subplots()
+        im = ax.imshow(corr_matrix)
+
+        ax.set_xticks(np.arange(len(labels)))
+        ax.set_yticks(np.arange(len(labels)))
+        ax.set_xticklabels(labels)
+        ax.set_yticklabels(labels)
+        plt.setp(ax.get_xticklabels(), rotation=45, ha="right",rotation_mode="anchor")
+        for i in range(len(labels)):
+            for j in range(len(labels)):
+                text = ax.text(j, i, corr_matrix[i, j], ha="center", va="center", color="w")
+        
+        ax.set_title("heatmap of correlations")
+        fig.tight_layout()
+        plt.savefig('../../plots/'+self.name+'_heatmap.png')
+
+    def plotting(self,file):
+        df = pd.read_excel(file)
+        df = df.round(decimals={'Insulation Thickness wall':3,'windows-U-factor':1,'Insulation Thickness roof':3})
+        list1=df['Insulation Thickness wall'].unique() #variation thickness
+        print (len(list1))
+        list2=df['windows-U-factor'].unique() #variation u window
+        print(len(list2))
+        list3= df['Insulation Thickness roof'].unique()
+        print (len(list3))
+
+        #plot U-window and roof thickness FIXED and thickness wall varying (3 wwr configurations):
+        for wwr in [0.15,0.5,0.9]:
+            title = 'WWR = '+str(wwr*100)+'%'
+            plt.figure()
+            plt.title(title)
+            for k in range(len(list1)):
+
+                i = list2[k]
+                j = list3[k]
+                tmp_df = df.loc [(df['windows-U-factor']== i)&(df['Insulation Thickness roof']==j)]
+                tmp_df = tmp_df.loc[tmp_df['Window to Wall Ratio']==wwr]
+                tmp_df = tmp_df.sort_values(by=['Insulation Thickness wall'])
+                label = 'U-wind='+str(i)+',roof='+str(j)
+                x = list(tmp_df['Insulation Thickness wall'])
+                y = list(tmp_df['DistrictHeating:Facility'])
+                plt.plot(x,y,label=label)
+            
+
+            plt.legend()
+            plt.xlabel('thickness [m]')
+            plt.ylabel('Heating [kWqualcosa]')
+            plt.savefig('../../plots/thickness_wall/'+self.name+str(title)+'.png')
+            plt.close()
+        
+        #plot U-window and wall thickness FIXED and thickness roof varying (3 wwr configurations):
+        for wwr in [0.15,0.5,0.9]:
+            title = 'WWR = '+str(wwr*100)+'%'
+            plt.figure()
+            plt.title(title)
+            for k in range(len(list1)):
+
+                i = list1[k]
+                j = list2[k]
+                tmp_df = df.loc [(df['Insulation Thickness wall']== i)&(df['windows-U-factor']==j)]
+                tmp_df = tmp_df.loc[tmp_df['Window to Wall Ratio']==wwr]
+                tmp_df = tmp_df.sort_values(by=['Insulation Thickness roof'])
+                label = 'wall='+str(i)+',wind_U='+str(j)
+                x = list(tmp_df['Insulation Thickness roof'])
+                y = list(tmp_df['DistrictHeating:Facility'])
+                plt.plot(x,y,label=label)
+            plt.yscale('log',basey=10)
+            plt.legend()
+            plt.xlabel('roof thickness[m]')
+            plt.ylabel('Heating [kWqualcosa]')
+            plt.savefig('../../plots/thickness_roof/'+self.name+str(title)+'.png')
+            #plt.savefig('plots/thickness_roof/'+str(title)+'U_window.png')
+            plt.close()
+
+
+        #plot wall thickness and roof thickness FIXED and U-window varying (3 wwr configurations):
+        for wwr in [0.15,0.5,0.9]:
+            title = 'WWR = '+str(wwr*100)+'%'
+            plt.figure()
+            plt.title(title)
+            for k in range(len(list1)):
+
+                i = list1[k]
+                j = list3[k]
+                tmp_df = df.loc [(df['Insulation Thickness wall']== i)&(df['Insulation Thickness roof']==j)]
+                tmp_df = tmp_df.loc[tmp_df['Window to Wall Ratio']==wwr]
+                tmp_df = tmp_df.sort_values(by=['windows-U-factor'])
+                print (tmp_df)
+                print (tmp_df['windows-U-factor'])
+                label = 'wall='+str(i)+',roof='+str(j)
+                x = list(tmp_df['windows-U-factor'])
+                y = list(tmp_df['DistrictHeating:Facility'])
+                plt.plot(x,y,label=label)
+            plt.legend()
+            plt.xlabel('window U [kWqualcosa]')
+            plt.ylabel('Heating [kWqualcosa]')
+            plt.savefig('../../plots/U_window/'+self.name+str(title)+'.png')
+            #plt.savefig('plots/U_window/'+str(title)+'U_window.png')
+            plt.close()
+
+
+    def find_optimum(self,dataframe):
+        #df = pd.read_excel(file)
+        #renaming columns
+        df = dataframe
+        old_names = list(df.keys())
+        new_name ={
+                    'Insulation Thickness wall':'wall_thick',
+                    'Window to Wall Ratio':'wwr',
+                    'windows-U-factor':'wind_U',
+                    'Insulation Thickness roof':'roof_thick',
+                    'Electricity:Facility':'Electricity',
+                    'DistrictHeating:Facility':'Heating',
+                    'DistrictCooling:Facility':'Cooling',
+                    }
+        df = df.rename(columns=new_name)
+        min_H = df[df.Heating == df.Heating.min()]
+        min_E= df[df.Electricity == df.Electricity.min()]
+        min_C = df[df.Cooling == df.Cooling.min()]
+
+
+        #initialization
+        best_E = 10000000000000000
+        best_C = 10000000000000000
+        best_H = 10000000000000000
+
+        for index, row in df.iterrows():
+            E = row['Electricity']
+            C = row['Cooling']
+            H = row['Heating']
+
+            if (E < best_E and H < best_H and C < best_C):
+                best_index = index
+                best_E = E
+                best_C = C
+                best_H = H
+            else:
+                continue
+        #print(df.iloc[best_index,:])
+        return best_index
+
+
+
+    def final_idf(self,idf,idd):
+        #per questa fase ricordarsi di installare pacchetto geomeppy in anaconda gia presente
+        geom_IDF.setiddname(idd)
+        idf1 = geom_IDF(idf)
+        df = pd.read_excel(self.evaluation_output)
+        #running the function to find the optimal values among all the simulations
+        best_index = self.find_optimum(df)
+        
+        Material = idf1.idfobjects['MATERIAL']
+        Window_Material = idf1.idfobjects['WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM']
+        #MATERIAL:#'WindowMaterial:SimpleGlazingSystem'
+        #ROOF: 'SuperInsulating_01445', POSITION: 2
+        #WALL: 'SuperInsulating_00795', POSITION: 7
+        #window material simple glazing...
+        #WINDOW: 'Simple 1001', POSITION: 0
+        
+        print(df.keys())
+        print(df.loc[best_index,'Insulation Thickness wall'])
+        Material[2].Thickness = df.loc[best_index,'Insulation Thickness roof']
+        Material[7].Thickness = df.loc[best_index,'Insulation Thickness wall']
+        Window_Material[0].UFactor = df.loc[best_index,'windows-U-factor']
+        
+        #changing the wwr
+        
+        new_wwr = df.loc[best_index,'Window to Wall Ratio']
+        old_fen = idf1.idfobjects['FENESTRATIONSURFACE:DETAILED']
+        idf1.set_wwr(wwr=new_wwr)
+        new_fen = idf1.idfobjects['FENESTRATIONSURFACE:DETAILED']
+        
+        
+
+        #SAVE THE ULTIMATE IDF FILE chose the directory in saveas
+        idf1.saveas('../../files/idf/optimal/'+self.name+'_Optimal.idf')
 
 
 
