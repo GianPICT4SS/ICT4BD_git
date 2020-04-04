@@ -12,7 +12,7 @@ from keras.layers import LSTM, Dense, GRU
 from keras.engine.input_layer import Input
 from keras.utils import plot_model
 import math
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import r2_score
 import json
 import os
 from pathlib import Path
@@ -23,6 +23,58 @@ tf.random.set_seed(69)
 class NoModelFound(Exception):
 	"""Raised when no model has been loaded"""
 	pass
+
+class EarlyStoppingAtNormDifference(tf.keras.callbacks.Callback):
+	"""Stop training when the loss is at its min, i.e. the loss stops decreasing."""
+
+	def __init__(self, patience=0):
+		super(EarlyStoppingAtNormDifference, self).__init__()
+
+		self.patience = patience
+
+		# best_weights to store the weights at which the minimum loss occurs.
+		self.best_weights = None
+
+	def on_train_begin(self, logs=None):
+		# The number of epoch it has waited when loss is no longer minimum.
+		self.wait = 0
+		# The epoch the training stops at.
+		self.stopped_epoch = 0
+		# Initialize the best as infinity.
+		self.best = np.Inf
+
+	def check_condition(self, current, best, epoch, k=0.001):
+		if current > best:
+			perc_increase = (current - best) / best * 100
+			print(f'Epoch {epoch} has seen an increase of {perc_increase:.2f} % in loss metric')
+		else:
+			perc_decrese = (best - current) / best * 100
+			print(f'Epoch {epoch} has seen a decrease of {perc_decrese:.2f} % in loss metric')
+			abs_diff = np.linalg.norm((best - current))
+			if abs_diff <= k:
+				return 0
+			else:
+				return 1
+
+	def on_epoch_end(self, epoch, logs=None):
+		current = logs.get('loss')
+		if self.check_condition(current, self.best, epoch):
+		  self.best = current
+		  self.wait = 0
+		  # Record the best weights if current results is better (less).
+		  self.best_weights = self.model.get_weights()
+		else:
+		  self.wait += 1
+		  if self.wait >= self.patience:
+		    self.stopped_epoch = epoch
+		    self.model.stop_training = True
+		    print('Restoring model weights from the end of the best epoch.')
+		    self.model.set_weights(self.best_weights)
+
+	def on_train_end(self, logs=None):
+		if self.stopped_epoch > 0:
+		  print('Epoch %05d: early stopping' % (self.stopped_epoch + 1))
+
 
 class TemperatureNN:
 	def __init__(self, path_epout='../eplus_simulation/eplus/eplusout.csv', path_models='models/', path_plots='../../plots/'):
@@ -102,13 +154,15 @@ class TemperatureNN:
 			plot_model(model, to_file=f'{path}/Model.png', show_shapes=True, dpi=300)
 
 			model.compile(loss='mae', optimizer='adam')
-			model.fit(xtrain, [ytrain[:,:,i] for i in range(n_outputs)], epochs=epochs, 
+			history = model.fit(xtrain, [ytrain[:,:,i] for i in range(n_outputs)], epochs=epochs, 
 				# validation_data=(xval,[yval[:,:,i] for i in range(n_outputs)]),
 				# validation_steps=200, steps_per_epoch=100,
-				# batch_size=12
+				# batch_size=12,
+				callbacks=[EarlyStoppingAtNormDifference()]
 				)
 			name = f'Model_epochs{epochs}_history{look_back}_future{future}'
 			self.save_model(model, name)
+			self.plot_loss(history)
 
 		else:
 			if load_model == None:
@@ -141,8 +195,8 @@ class TemperatureNN:
 			predictions.append(b)
 			real_data.append(a)
 			
-			test_score = math.sqrt(mean_squared_error(b, a))
-			print(f'{name} Score: %.2f RMSE' % (test_score))
+			test_score = r2_score(b, a, multioutput='variance_weighted')
+			print(f'{name} R2 Score: %.2f (1=Best Possible Model)' % (test_score))
 
 			plt.figure(figsize=(15,6))
 			plt.plot(a[:,-1], label='real_data')
@@ -164,11 +218,22 @@ class TemperatureNN:
 
 		return model_loaded
 
+	def plot_loss(self, history):
+		path = Path(self.path_plots)
+		losses = history.history['loss']
+		plt.figure(figsize=(12,4))
+		plt.plot(losses)
+		plt.grid()
+		plt.title('Train Loss')
+		plt.ylabel('MAE')
+		plt.xlabel('Epochs')
+		plt.savefig(f'{path}/TrainLoss.png')
+
 if __name__ == '__main__':
 	nn = TemperatureNN()
 	past = 24
-	future = 6
-	epochs = 20
+	future = 3
+	epochs = 10
 
 	name = f"Model_epochs{epochs}_history{past}_future{future}"
 	model_name = f"{name}.h5"
