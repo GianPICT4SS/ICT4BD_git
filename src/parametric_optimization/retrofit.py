@@ -3,7 +3,7 @@ parameters to change and calling the parametric_analysis method of the class Pre
 energy signature is done, in order to see the effect on the save energy capacity of the building. The output of
 the simulatiom are saved as several plots. """
 
-from src.method_building import Prediction
+from method_building import Prediction
 
 
 learn = Prediction()
@@ -31,19 +31,6 @@ objectives = ['Electricity:Facility', 'DistrictCooling:Facility', 'DistrictHeati
 
 learn.parametric_analysis(dinamic_parameter=dinamic_parameter, fixed_parameters=fixed_parameters,
                     objectives=objectives, idf_path=path_On, epw_path=path_w, n_points=6)
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

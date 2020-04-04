@@ -26,22 +26,27 @@ mpl.rc('xtick', labelsize=12)
 mpl.rc('ytick', labelsize=12)
 
 # To use some specific method useful for this task
-from src.method_building import Prediction
+sys.path.insert(1, '../')
+from method_building import Prediction
 
 
 learn = Prediction()
 # ===========================================================
 # PARAMETERS
 # ===========================================================
-EVALUATION_INTERVAL = 500
+EVALUATION_INTERVAL = 100
 EPOCHS = 20
-BATCH_SIZE = 56
+BATCH_SIZE = 2
 BUFFER_SIZE = 5000
+N1 = 20
+N2 = 10
+N3 = 6
 
 # ==============================================================
 # DATASET
 # ===============================================================
 df = pd.read_csv('../eplus_simulation/eplus/eplusout.csv')
+print('DATASET READY')
 df = learn.create_csv(df)
 TRAIN_SPLIT = int(df.shape[0]*0.8)  # 80% data train
 
@@ -78,8 +83,8 @@ target = scaler_tar.transform(target)
 #dataset_std = dataset[:TRAIN_SPLIT].std(axis=0)
 #dataset = (dataset-dataset_mean)/dataset_std
 
-past_history = 24*10  # 10 days history
-future_target = 24  # one-day prediction
+past_history = 8*10  # 10 days history
+future_target = 2  # one-day prediction
 STEP = 1
 
 
@@ -96,7 +101,6 @@ x_val_multi, y_val_multi = learn.multivariate_data(dataset=dataset, target=targe
 
 print('Single window of past history : {}'.format(x_train_multi[0].shape))
 print('Target temperature to predict : {}'.format(y_train_multi[0].shape))
-
 train_data_multi = tf.data.Dataset.from_tensor_slices((x_train_multi, y_train_multi))
 train_data_multi = train_data_multi.cache().shuffle(BUFFER_SIZE, reshuffle_each_iteration=False).batch(BATCH_SIZE).repeat()
 
@@ -109,18 +113,18 @@ val_data_multi = val_data_multi.batch(BATCH_SIZE).repeat()
 
 leaky_relu = tf.keras.layers.LeakyReLU(alpha=0.2)
 multi_step_model = tf.keras.models.Sequential()
-multi_step_model.add(tf.keras.layers.GRU(91,
+multi_step_model.add(tf.keras.layers.GRU(N1,
                                           dropout=0.05,
                                           recurrent_dropout=0.2,
                                           return_sequences=True,
                                           input_shape=x_train_multi.shape[-2:]))
-multi_step_model.add(tf.keras.layers.GRU(65,
+multi_step_model.add(tf.keras.layers.GRU(N2,
                                           dropout=0.05,
                                           recurrent_dropout=0.2,
                                           activation='relu',
                                           return_sequences=True))
-                                          #kernel_initializer='he_normal'))
-multi_step_model.add(tf.keras.layers.GRU(39,
+                                          # kernel_initializer='he_normal'))
+multi_step_model.add(tf.keras.layers.GRU(N3,
                                           dropout=0.05,
                                           recurrent_dropout=0.2,
                                           activation='relu'))
