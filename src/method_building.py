@@ -17,9 +17,11 @@ import statsmodels.api as sm
 
 import eppy
 from eppy.modeleditor import IDF
+from geomeppy import IDF as geom_IDF
 from besos import eppy_funcs as ef
+from besos import sampling
 from besos.evaluator import EvaluatorEP
-from besos.parameters import FieldSelector, Parameter, expand_plist, CategoryParameter, wwr, RangeParameter
+from besos.parameters import RangeParameter, FieldSelector, FilterSelector, Parameter, expand_plist, wwr, CategoryParameter, GenericSelector
 from besos.problem import EPProblem
 
 import logging
@@ -33,6 +35,7 @@ logger = logging.getLogger(__name__)
 
 
 class Prediction():
+
 
     @classmethod
     def create_time_steps(cls, length):
@@ -289,16 +292,13 @@ class Prediction():
                             field_name=dinamic_parameter['field_name'])
 
         ls_fp.append(d_par)
-        parameters = [Parameter(selector=x) for x in ls_fp]
-        wwr_list = [0.15, 0.5, 0.9, 0.15,0.5,0.9]
-        wwr_range = RangeParameter(0.1,0.9)
+        wwr_list = [0.15, 0.5, 0.9, 0.15, 0.5, 0.9]
+        wwr_range = CategoryParameter(options=wwr_list)
         w_t_r = wwr(wwr_range)
-        # ls_fp.append(w_t_r)
-        print(w_t_r)
-        new_par = Parameter(selector=w_t_r)
-        parameters.append(new_par)
-        print(parameters)
-        # exit()
+        ls_fp.append(w_t_r)
+
+        parameters = [Parameter(selector=x) for x in ls_fp]
+
         if dinamic_parameter['object_name'] == 'Simple 1001':
             logger.info(f"Parametric analysis for {dinamic_parameter['object_name']} will start.") # U-factor as dy par
             range_ufw = np.linspace(-5, -0.3, n_points)
@@ -308,8 +308,9 @@ class Prediction():
                     #dict_[parameters[i].selector.object_name] = [((i+2)**2*0.1)]*n_points
                     dict_[parameters[i].selector.object_name] = [(j+1)*0.1]*n_points
                 dict_[parameters[-1].selector.name] = wwr_list[j]*n_points  # add wwr_list associated with wwr par
+                dict_[parameters[len(fixed_parameters)].selector.object_name] = range_ufw*-1
                 df_samples = pd.DataFrame.from_dict(dict_)
-                df_samples[parameters[len(fixed_parameters)-1].selector.object_name] = range_ufw*-1  #take dy-par Ufactor
+                #df_samples[parameters[len(fixed_parameters)].selector.object_name] = range_ufw*-1  #take dy-par Ufactor
                 problem = EPProblem(parameters, objectives)
                 evaluator = EvaluatorEP(problem, building, epw_file=epw_path, out_dir='../../files/out_dir', err_dir='../../files/err_dir')
                 outputs = evaluator.df_apply(df_samples, keep_input=True)
@@ -327,7 +328,7 @@ class Prediction():
                 df_samples.to_csv('../../files/outputs/outputs_60p_ch_ufw' + str(j) + '.csv')
         elif dinamic_parameter['class_name'] == 'Material':
             logger.info(f"Parametric analysis for {dinamic_parameter['object_name']} will start.")
-            range_t = list(np.linspace(0.01, 0.5, n_points))  # metri
+            range_t = np.linspace(0.01, 0.5, n_points)  # metri
             dict_ = {}
             for j in range(6):
                 for i in range(len(fixed_parameters)):
@@ -337,10 +338,7 @@ class Prediction():
                         dict_[parameters[i].selector.object_name] = [(j + 1) * 0.1] * n_points
                 dict_[parameters[-1].selector.name] = wwr_list[j]*n_points
                 dict_[parameters[len(fixed_parameters)].selector.object_name] = range_t
-                # print(dict_)
                 df_samples = pd.DataFrame.from_dict(dict_)
-                # print(parameters[len(fixed_parameters)].selector.object_name)
-                # print(df_samples)
                 problem = EPProblem(parameters, objectives)
                 evaluator = EvaluatorEP(problem, building, epw=epw_path, out_dir='../../files/out_dir', err_dir='../../files/err_dir')
                 outputs = evaluator.df_apply(df_samples, keep_input=True)
@@ -444,7 +442,8 @@ class Prediction():
         return df_z
 
     @classmethod
-    def energy_signature(cls, iddfile, fname, epw, name=''):
+    def energy_signature(cls, iddfile='', fname='eplusout.csv', epw='', name=''):
+
 
         try:
             IDF.setiddname('/Applications/EnergyPlus-8-1-0/Energy+.idd')
@@ -486,61 +485,338 @@ class Prediction():
         df = df.set_index(pd.to_datetime('2018/' + df.index))
         df['Temp_in'] = df[['Temp_in_1', 'Temp_in_2', 'Temp_in_3']].astype(float).mean(1)
         df['deltaT'] = df['Temp_in'] - df['Temp_out']
-        df['Power'] = (df['Heating'])/3.6e6
-        #df['Power'] = df['Electricity']
         df.to_csv(f'../../files/outputs/en_sig_{name}.csv')
-        ls_r = []
-        df = df.resample('H').mean()
-        # df['p_z1'] = df['BLOCCO1:ZONA1:Zone Ventilation Sensible Heat Loss Energy [J](Hourly)']
-        model = sm.OLS(df['Power'], sm.add_constant(df['deltaT']))
-        results_h = model.fit()
-        ls_r.append(results_h)
 
+        # ============================================================
+        # Energy Signature: HOURLY
+        # ============================================================
+        # HEATING
+        heating_df = df.where(df['Heating']/3.6e6 > 0.2).dropna()
+        heating_df = heating_df.resample('H').mean()
+        heating_df = heating_df.dropna()
+        model_H = sm.OLS(heating_df['Heating']/(3.6e6), sm.add_constant(heating_df['deltaT']))
+        results_h = model_H.fit()
+        # COOLING
+        cool_df = df.where(df['Cooling']/3.6e6 > 0.5).dropna()
+        cool_df = cool_df.resample('H').mean()
+        cool_df = cool_df.dropna()
+        model_C = sm.OLS(cool_df['Cooling']/(3.6e6), sm.add_constant(cool_df['deltaT']))
+        results_c = model_C.fit()
         # Plots
         fig, (ax1, ax2, ax3) = plt.subplots(3, figsize=(10, 10))
         fig.suptitle("Energy Signature")
-        ax1.plot(df['deltaT'], results_h.predict(), 'r')
-        ax1.scatter(df['deltaT'], df['Power'])
-        ax1.set_xlabel('Temperature [C]')
-        ax1.set_ylabel('Heating Consumption [kWh]')
+        ax1.plot(heating_df['Temp_out'], results_h.predict(), label='Heating')
+        ax1.plot(cool_df['Temp_out'], results_c.predict(), label='Cooling')
+        ax1.scatter(heating_df['Temp_out'], heating_df['Heating']/(3.6e6))
+        ax1.scatter(cool_df['Temp_out'], cool_df['Cooling']/(3.6e6))
+
+        ax1.set_xlabel('T_out [C°]')
+        ax1.set_ylabel('Energy Consumption [kWh]')
         ax1.set_title('Hourly resample')
+        ax1.legend()
         ax1.grid(linestyle='--', linewidth=.4, which='both')
 
-        df = df.resample('D').mean()
-        #df['t_ext'] = df['Environment:Site Outdoor Air Drybulb Temperature [C](Hourly)']
-        #df['p_z1'] = df['BLOCCO1:ZONA1:Zone Ventilation Sensible Heat Loss Energy [J](Hourly)']
-        model = sm.OLS(df['Power'], sm.add_constant(df['deltaT']))
-        results_d = model.fit()
-        ls_r.append(results_d)
+        # ============================================================
+        # Energy Signature: DAILY
+        # ============================================================
+        # HEATING
+        heating_df = df.where(df['Heating']/3.6e6 > 0.2).dropna()
+        heating_df = heating_df.resample('D').mean()
+        heating_df = heating_df.dropna()
+        model_h = sm.OLS(heating_df['Heating']/3.6e6, sm.add_constant(heating_df['deltaT']))
+        results_d_h = model_h.fit()
+
+        # COOLING
+        cool_df = df.where(df['Cooling']/3.6e6 > 0.5).dropna()
+        cool_df = cool_df.resample('D').mean()
+        cool_df = cool_df.dropna()
+        model_c = sm.OLS(cool_df['Cooling']/(3.6e6), sm.add_constant(cool_df['deltaT']))
+        results_d_c = model_c.fit()
 
 
-        ax2.plot(df['deltaT'], results_d.predict(), 'r')
-        ax2.scatter(df['deltaT'], df['Power'])
-        ax2.set_xlabel('DeltaTemperature [C]')
-        ax2.set_ylabel('Heating Consumption [kWh]')
+        ax2.plot(heating_df['Temp_out'], results_d_h.predict(), label='Heating')
+        ax2.plot(cool_df['Temp_out'], results_d_c.predict(), label='Cooling')
+        ax2.scatter(heating_df['Temp_out'], heating_df['Heating']/(3.6e6))
+        ax2.scatter(cool_df['Temp_out'], cool_df['Cooling']/(3.6e6))
+        ax2.set_xlabel('T_out [C°]')
+        ax2.set_ylabel('Energy Consumption [kWh]')
         ax2.set_title('DAY resample')
+        ax2.legend()
         ax2.grid(linestyle='--', linewidth=.4, which='both')
 
-        df = df.resample('W').mean()
-        #df['t_ext'] = df['Environment:Site Outdoor Air Drybulb Temperature [C](Hourly)']
-        #df['p_z1'] = df['BLOCCO1:ZONA1:Zone Ventilation Sensible Heat Loss Energy [J](Hourly)']
-        model = sm.OLS(df['Power'], sm.add_constant(df['deltaT']))
-        results_w = model.fit()
-        ls_r.append(results_w)
+        # ============================================================
+        # Energy Signature: WEEK
+        # ============================================================
+        # HEATING
+        heating_df = df.where(df['Heating']/3.6e6 > 0.2).dropna()
+        heating_df = heating_df.resample('W').mean()
+        heating_df = heating_df.dropna()
+        model_h = sm.OLS(heating_df['Heating']/(3.6e6), sm.add_constant(heating_df['deltaT']))
+        results_w_h = model_h.fit()
 
-        ax3.plot(df['deltaT'], results_w.predict(), 'r')
-        ax3.scatter(df['deltaT'], df['Power'])
-        ax3.set_xlabel('DeltaTemperature [C]')
-        ax3.set_ylabel('Heating Consumption [kWh]')
+        # COOLING
+        cool_df = df.where(df['Cooling']/3.6e6 > 0.5).dropna()
+        cool_df = cool_df.resample('W').mean()
+        cool_df = cool_df.dropna()
+        model_c = sm.OLS(cool_df['Cooling']/(3.6e6), sm.add_constant(cool_df['deltaT']))
+        results_w_c = model_c.fit()
+
+
+        ax3.plot(heating_df['Temp_out'], results_w_h.predict(), label='Heating')
+        ax3.plot(cool_df['Temp_out'], results_w_c.predict(), label='Cooling')
+        ax3.scatter(heating_df['Temp_out'], heating_df['Heating']/(3.6e6))
+        ax3.scatter(cool_df['Temp_out'], cool_df['Cooling']/(3.6e6))
+        ax3.set_xlabel('T_out [C°]')
+        ax3.set_ylabel('Energy Consumption [kWh]')
         ax3.set_title('WEEK resample')
+        ax3.legend()
         ax3.grid(linestyle='--', linewidth=.4, which='both')
         plt.subplots_adjust(bottom=0.3, right=0.8, top=0.9, hspace=1)
-        plt.savefig(fname=f'../../plots/energy_signature_{name}.png', dpi=400)
+        plt.savefig(fname=f'../../plots/energy_signature_{name}_tout.png', dpi=400)
         plt.close()
 
 
-        return ls_r
 
+
+
+class Optimal_config :
+    
+    def __init__(self,idf,epw):
+        self.building = ef.get_building(idf)
+        self.name = os.path.basename(idf).replace('.idf','')
+        self.epw = epw
+        self.evaluation_output = '../../files/outputs/'+self.name+'_DB.xlsx'
+        IDD_file = '/usr/local/EnergyPlus-9-0-1/Energy+.idd'
+
+        self.energy_evaluator(self.building)
+        self.correlation(self.evaluation_output)
+        self.plotting(self.evaluation_output)
+        self.final_idf(idf,IDD_file)
+
+    def energy_evaluator(self,building):
+        
+        list1=np.linspace(0.01,0.35,6,endpoint=False)
+        list2=np.linspace(0.9,6,6,endpoint=False)
+        list1 = np.round(list1,decimals=3)
+        list2 = np.round(list2,decimals=2)
+        wwr_list = [0.15,0.5,0.9]
+        
+
+        insul_range = CategoryParameter(options=list1)
+        U_window_range = CategoryParameter(options=list2)
+        wwr_range = CategoryParameter(options=wwr_list)
+        insulation_wall = FieldSelector(class_name='Material', object_name='SuperInsulating_00795', field_name='Thickness')
+        insulation_roof = FieldSelector(class_name='Material', object_name='SuperInsulating_01445', field_name='Thickness')
+        glazing = FieldSelector(class_name='WindowMaterial:SimpleGlazingSystem',object_name ='Simple 1001',field_name ='U-Factor')
+        
+        insul_param_wall = Parameter(selector=insulation_wall,value_descriptor=insul_range,name ='Insulation Thickness wall')
+        insul_param_roof = Parameter(selector=insulation_roof,value_descriptor=insul_range,name ='Insulation Thickness roof')
+        U_window_param = Parameter(selector=glazing,value_descriptor=U_window_range,name ='windows-U-factor')
+        windows_to_wall = wwr(wwr_range) #this function equivalent to fieldselctor+parameter functions 
+        
+        #CREATION OF THE PROBLEM
+        parameters=[insul_param_wall]+[windows_to_wall]+[U_window_param]+[insul_param_roof]
+        objectives = ['Electricity:Facility','DistrictHeating:Facility','DistrictCooling:Facility'] # these get made into `MeterReader` or `VariableReader`
+        problem = EPProblem(parameters, objectives)
+        samples = create_samples(wwr_list,list1,list1,list2)
+        
+        #CREATING EVALUATIONS
+        evaluator = EvaluatorEP(problem, building, out_dir='OUTPUTS', err_dir='ERR_OUTPUTS' ,epw=self.epw) # evaluator = problem + building
+        outputs = evaluator.df_apply(samples, keep_input=True)
+        outputs = outputs.sort_values(by =['Insulation Thickness wall','windows-U-factor','Insulation Thickness roof'])
+        
+        outputs.to_excel(self.evaluation_output)
+        print(outputs)
+        print(outputs.describe())
+    
+
+    def correlation (self,file):
+        
+        out = pd.read_excel(file)
+        out= out.drop(columns='Unnamed: 0')
+        corr = out.corr()
+        labels = list(corr.keys())
+        corr_matrix = corr.to_numpy()
+        corr_matrix = np.around(corr_matrix,decimals=3)
+        print(corr_matrix)
+
+        
+        fig, ax = plt.subplots()
+        im = ax.imshow(corr_matrix)
+
+        ax.set_xticks(np.arange(len(labels)))
+        ax.set_yticks(np.arange(len(labels)))
+        ax.set_xticklabels(labels)
+        ax.set_yticklabels(labels)
+        plt.setp(ax.get_xticklabels(), rotation=45, ha="right",rotation_mode="anchor")
+        for i in range(len(labels)):
+            for j in range(len(labels)):
+                text = ax.text(j, i, corr_matrix[i, j], ha="center", va="center", color="w")
+        
+        ax.set_title("heatmap of correlations")
+        fig.tight_layout()
+        plt.savefig('../../plots/'+self.name+'_heatmap.png')
+
+    def plotting(self,file):
+        df = pd.read_excel(file)
+        df = df.round(decimals={'Insulation Thickness wall':3,'windows-U-factor':1,'Insulation Thickness roof':3})
+        list1=df['Insulation Thickness wall'].unique() #variation thickness
+        print (len(list1))
+        list2=df['windows-U-factor'].unique() #variation u window
+        print(len(list2))
+        list3= df['Insulation Thickness roof'].unique()
+        print (len(list3))
+
+        #plot U-window and roof thickness FIXED and thickness wall varying (3 wwr configurations):
+        for wwr in [0.15,0.5,0.9]:
+            title = 'WWR = '+str(wwr*100)+'%'
+            plt.figure()
+            plt.title(title)
+            for k in range(len(list1)):
+
+                i = list2[k]
+                j = list3[k]
+                tmp_df = df.loc [(df['windows-U-factor']== i)&(df['Insulation Thickness roof']==j)]
+                tmp_df = tmp_df.loc[tmp_df['Window to Wall Ratio']==wwr]
+                tmp_df = tmp_df.sort_values(by=['Insulation Thickness wall'])
+                label = 'U-wind='+str(i)+',roof='+str(j)
+                x = list(tmp_df['Insulation Thickness wall'])
+                y = list(tmp_df['DistrictHeating:Facility'])
+                plt.plot(x,y,label=label)
+            
+
+            plt.legend()
+            plt.xlabel('thickness [m]')
+            plt.ylabel('Heating [kWqualcosa]')
+            plt.savefig('../../plots/thickness_wall/'+self.name+str(title)+'.png')
+            plt.close()
+        
+        #plot U-window and wall thickness FIXED and thickness roof varying (3 wwr configurations):
+        for wwr in [0.15,0.5,0.9]:
+            title = 'WWR = '+str(wwr*100)+'%'
+            plt.figure()
+            plt.title(title)
+            for k in range(len(list1)):
+
+                i = list1[k]
+                j = list2[k]
+                tmp_df = df.loc [(df['Insulation Thickness wall']== i)&(df['windows-U-factor']==j)]
+                tmp_df = tmp_df.loc[tmp_df['Window to Wall Ratio']==wwr]
+                tmp_df = tmp_df.sort_values(by=['Insulation Thickness roof'])
+                label = 'wall='+str(i)+',wind_U='+str(j)
+                x = list(tmp_df['Insulation Thickness roof'])
+                y = list(tmp_df['DistrictHeating:Facility'])
+                plt.plot(x,y,label=label)
+            plt.yscale('log',basey=10)
+            plt.legend()
+            plt.xlabel('roof thickness[m]')
+            plt.ylabel('Heating [kWqualcosa]')
+            plt.savefig('../../plots/thickness_roof/'+self.name+str(title)+'.png')
+            #plt.savefig('plots/thickness_roof/'+str(title)+'U_window.png')
+            plt.close()
+
+
+        #plot wall thickness and roof thickness FIXED and U-window varying (3 wwr configurations):
+        for wwr in [0.15,0.5,0.9]:
+            title = 'WWR = '+str(wwr*100)+'%'
+            plt.figure()
+            plt.title(title)
+            for k in range(len(list1)):
+
+                i = list1[k]
+                j = list3[k]
+                tmp_df = df.loc [(df['Insulation Thickness wall']== i)&(df['Insulation Thickness roof']==j)]
+                tmp_df = tmp_df.loc[tmp_df['Window to Wall Ratio']==wwr]
+                tmp_df = tmp_df.sort_values(by=['windows-U-factor'])
+                print (tmp_df)
+                print (tmp_df['windows-U-factor'])
+                label = 'wall='+str(i)+',roof='+str(j)
+                x = list(tmp_df['windows-U-factor'])
+                y = list(tmp_df['DistrictHeating:Facility'])
+                plt.plot(x,y,label=label)
+            plt.legend()
+            plt.xlabel('window U [kWqualcosa]')
+            plt.ylabel('Heating [kWqualcosa]')
+            plt.savefig('../../plots/U_window/'+self.name+str(title)+'.png')
+            #plt.savefig('plots/U_window/'+str(title)+'U_window.png')
+            plt.close()
+
+
+    def find_optimum(self,dataframe):
+        #df = pd.read_excel(file)
+        #renaming columns
+        df = dataframe
+        old_names = list(df.keys())
+        new_name ={
+                    'Insulation Thickness wall':'wall_thick',
+                    'Window to Wall Ratio':'wwr',
+                    'windows-U-factor':'wind_U',
+                    'Insulation Thickness roof':'roof_thick',
+                    'Electricity:Facility':'Electricity',
+                    'DistrictHeating:Facility':'Heating',
+                    'DistrictCooling:Facility':'Cooling',
+                    }
+        df = df.rename(columns=new_name)
+        min_H = df[df.Heating == df.Heating.min()]
+        min_E= df[df.Electricity == df.Electricity.min()]
+        min_C = df[df.Cooling == df.Cooling.min()]
+
+
+        #initialization
+        best_E = 10000000000000000
+        best_C = 10000000000000000
+        best_H = 10000000000000000
+
+        for index, row in df.iterrows():
+            E = row['Electricity']
+            C = row['Cooling']
+            H = row['Heating']
+
+            if (E < best_E and H < best_H and C < best_C):
+                best_index = index
+                best_E = E
+                best_C = C
+                best_H = H
+            else:
+                continue
+        #print(df.iloc[best_index,:])
+        return best_index
+
+
+
+    def final_idf(self,idf,idd):
+        #per questa fase ricordarsi di installare pacchetto geomeppy in anaconda gia presente
+        geom_IDF.setiddname(idd)
+        idf1 = geom_IDF(idf)
+        df = pd.read_excel(self.evaluation_output)
+        #running the function to find the optimal values among all the simulations
+        best_index = self.find_optimum(df)
+        
+        Material = idf1.idfobjects['MATERIAL']
+        Window_Material = idf1.idfobjects['WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM']
+        #MATERIAL:#'WindowMaterial:SimpleGlazingSystem'
+        #ROOF: 'SuperInsulating_01445', POSITION: 2
+        #WALL: 'SuperInsulating_00795', POSITION: 7
+        #window material simple glazing...
+        #WINDOW: 'Simple 1001', POSITION: 0
+        
+        print(df.keys())
+        print(df.loc[best_index,'Insulation Thickness wall'])
+        Material[2].Thickness = df.loc[best_index,'Insulation Thickness roof']
+        Material[7].Thickness = df.loc[best_index,'Insulation Thickness wall']
+        Window_Material[0].UFactor = df.loc[best_index,'windows-U-factor']
+        
+        #changing the wwr
+        
+        new_wwr = df.loc[best_index,'Window to Wall Ratio']
+        old_fen = idf1.idfobjects['FENESTRATIONSURFACE:DETAILED']
+        idf1.set_wwr(wwr=new_wwr)
+        new_fen = idf1.idfobjects['FENESTRATIONSURFACE:DETAILED']
+        
+        
+
+        #SAVE THE ULTIMATE IDF FILE chose the directory in saveas
+        idf1.saveas('../../files/idf/optimal/'+self.name+'_Optimal.idf')
 
 
 
@@ -551,5 +827,6 @@ if __name__ == '__main__':
     learn = Prediction()
     df = pd.read_csv('eplus_simulation/eplus/eplusout.csv')
     df = learn.create_csv(df)
+
 
 

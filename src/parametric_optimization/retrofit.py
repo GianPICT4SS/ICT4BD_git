@@ -3,34 +3,26 @@ parameters to change and calling the parametric_analysis method of the class Pre
 energy signature is done, in order to see the effect on the save energy capacity of the building. The output of
 the simulatiom are saved as several plots. """
 
-from method_building import Prediction
+from src.method_building import Optimal_config as opt
+
+path = '../../files/idf/original/'
+epw = '../../files/epw/ITA_Torino.160590_IWEC.epw'
+
+for idf in os.listdir(path):
+  Parametric = opt(idf,epw) #will automatically run all the method in class Optimal config
+  
 
 
-learn = Prediction()
-
-path_On = '../../files/idf/Office_On_corrected.idf'
-
-path_Off = '../../files/idf/Office_Off_corrected.idf'
-
-path_w = '../../files/epw/ITA_Torino.160590_IWEC.epw'
 
 
-dinamic_parameter = {'class_name': 'Material',
-                     'object_name': 'SuperInsulating_00795',
-                    'field_name': 'Thickness'}
 
 
-fixed_parameters = [{'class_name': 'Material',
-                     'object_name': 'SuperInsulating_01445',
-                    'field_name': 'Thickness'}, {'class_name': 'WindowMaterial:SimpleGlazingSystem',
-                     'object_name': 'Simple 1001',
-                    'field_name': 'UFactor'}]
-
-objectives = ['Electricity:Facility', 'DistrictCooling:Facility', 'DistrictHeating:Facility']
 
 
-learn.parametric_analysis(dinamic_parameter=dinamic_parameter, fixed_parameters=fixed_parameters,
-                    objectives=objectives, idf_path=path_On, epw_path=path_w, n_points=6)
+
+
+
+
 
 
 
