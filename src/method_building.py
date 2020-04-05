@@ -442,7 +442,8 @@ class Prediction():
         return df_z
 
     @classmethod
-    def energy_signature(cls, iddfile, fname, epw, name=''):
+    def energy_signature(cls, iddfile='', fname='eplusout.csv', epw='', name=''):
+
 
         try:
             IDF.setiddname('/Applications/EnergyPlus-8-1-0/Energy+.idd')
@@ -484,60 +485,99 @@ class Prediction():
         df = df.set_index(pd.to_datetime('2018/' + df.index))
         df['Temp_in'] = df[['Temp_in_1', 'Temp_in_2', 'Temp_in_3']].astype(float).mean(1)
         df['deltaT'] = df['Temp_in'] - df['Temp_out']
-        df['Power'] = (df['Heating'])/3.6e6
-        #df['Power'] = df['Electricity']
         df.to_csv(f'../../files/outputs/en_sig_{name}.csv')
-        ls_r = []
-        df = df.resample('H').mean()
-        # df['p_z1'] = df['BLOCCO1:ZONA1:Zone Ventilation Sensible Heat Loss Energy [J](Hourly)']
-        model = sm.OLS(df['Power'], sm.add_constant(df['deltaT']))
-        results_h = model.fit()
-        ls_r.append(results_h)
 
+        # ============================================================
+        # Energy Signature: HOURLY
+        # ============================================================
+        # HEATING
+        heating_df = df.where(df['Heating']/3.6e6 > 0.2).dropna()
+        heating_df = heating_df.resample('H').mean()
+        heating_df = heating_df.dropna()
+        model_H = sm.OLS(heating_df['Heating']/(3.6e6), sm.add_constant(heating_df['deltaT']))
+        results_h = model_H.fit()
+        # COOLING
+        cool_df = df.where(df['Cooling']/3.6e6 > 0.5).dropna()
+        cool_df = cool_df.resample('H').mean()
+        cool_df = cool_df.dropna()
+        model_C = sm.OLS(cool_df['Cooling']/(3.6e6), sm.add_constant(cool_df['deltaT']))
+        results_c = model_C.fit()
         # Plots
         fig, (ax1, ax2, ax3) = plt.subplots(3, figsize=(10, 10))
         fig.suptitle("Energy Signature")
-        ax1.plot(df['deltaT'], results_h.predict(), 'r')
-        ax1.scatter(df['deltaT'], df['Power'])
-        ax1.set_xlabel('Temperature [C]')
-        ax1.set_ylabel('Heating Consumption [kWh]')
+        ax1.plot(heating_df['Temp_out'], results_h.predict(), label='Heating')
+        ax1.plot(cool_df['Temp_out'], results_c.predict(), label='Cooling')
+        ax1.scatter(heating_df['Temp_out'], heating_df['Heating']/(3.6e6))
+        ax1.scatter(cool_df['Temp_out'], cool_df['Cooling']/(3.6e6))
+
+        ax1.set_xlabel('T_out [C°]')
+        ax1.set_ylabel('Energy Consumption [kWh]')
         ax1.set_title('Hourly resample')
+        ax1.legend()
         ax1.grid(linestyle='--', linewidth=.4, which='both')
 
-        df = df.resample('D').mean()
-        #df['t_ext'] = df['Environment:Site Outdoor Air Drybulb Temperature [C](Hourly)']
-        #df['p_z1'] = df['BLOCCO1:ZONA1:Zone Ventilation Sensible Heat Loss Energy [J](Hourly)']
-        model = sm.OLS(df['Power'], sm.add_constant(df['deltaT']))
-        results_d = model.fit()
-        ls_r.append(results_d)
+        # ============================================================
+        # Energy Signature: DAILY
+        # ============================================================
+        # HEATING
+        heating_df = df.where(df['Heating']/3.6e6 > 0.2).dropna()
+        heating_df = heating_df.resample('D').mean()
+        heating_df = heating_df.dropna()
+        model_h = sm.OLS(heating_df['Heating']/3.6e6, sm.add_constant(heating_df['deltaT']))
+        results_d_h = model_h.fit()
+
+        # COOLING
+        cool_df = df.where(df['Cooling']/3.6e6 > 0.5).dropna()
+        cool_df = cool_df.resample('D').mean()
+        cool_df = cool_df.dropna()
+        model_c = sm.OLS(cool_df['Cooling']/(3.6e6), sm.add_constant(cool_df['deltaT']))
+        results_d_c = model_c.fit()
 
 
-        ax2.plot(df['deltaT'], results_d.predict(), 'r')
-        ax2.scatter(df['deltaT'], df['Power'])
-        ax2.set_xlabel('DeltaTemperature [C]')
-        ax2.set_ylabel('Heating Consumption [kWh]')
+        ax2.plot(heating_df['Temp_out'], results_d_h.predict(), label='Heating')
+        ax2.plot(cool_df['Temp_out'], results_d_c.predict(), label='Cooling')
+        ax2.scatter(heating_df['Temp_out'], heating_df['Heating']/(3.6e6))
+        ax2.scatter(cool_df['Temp_out'], cool_df['Cooling']/(3.6e6))
+        ax2.set_xlabel('T_out [C°]')
+        ax2.set_ylabel('Energy Consumption [kWh]')
         ax2.set_title('DAY resample')
+        ax2.legend()
         ax2.grid(linestyle='--', linewidth=.4, which='both')
 
-        df = df.resample('W').mean()
-        #df['t_ext'] = df['Environment:Site Outdoor Air Drybulb Temperature [C](Hourly)']
-        #df['p_z1'] = df['BLOCCO1:ZONA1:Zone Ventilation Sensible Heat Loss Energy [J](Hourly)']
-        model = sm.OLS(df['Power'], sm.add_constant(df['deltaT']))
-        results_w = model.fit()
-        ls_r.append(results_w)
+        # ============================================================
+        # Energy Signature: WEEK
+        # ============================================================
+        # HEATING
+        heating_df = df.where(df['Heating']/3.6e6 > 0.2).dropna()
+        heating_df = heating_df.resample('W').mean()
+        heating_df = heating_df.dropna()
+        model_h = sm.OLS(heating_df['Heating']/(3.6e6), sm.add_constant(heating_df['deltaT']))
+        results_w_h = model_h.fit()
 
-        ax3.plot(df['deltaT'], results_w.predict(), 'r')
-        ax3.scatter(df['deltaT'], df['Power'])
-        ax3.set_xlabel('DeltaTemperature [C]')
-        ax3.set_ylabel('Heating Consumption [kWh]')
+        # COOLING
+        cool_df = df.where(df['Cooling']/3.6e6 > 0.5).dropna()
+        cool_df = cool_df.resample('W').mean()
+        cool_df = cool_df.dropna()
+        model_c = sm.OLS(cool_df['Cooling']/(3.6e6), sm.add_constant(cool_df['deltaT']))
+        results_w_c = model_c.fit()
+
+
+        ax3.plot(heating_df['Temp_out'], results_w_h.predict(), label='Heating')
+        ax3.plot(cool_df['Temp_out'], results_w_c.predict(), label='Cooling')
+        ax3.scatter(heating_df['Temp_out'], heating_df['Heating']/(3.6e6))
+        ax3.scatter(cool_df['Temp_out'], cool_df['Cooling']/(3.6e6))
+        ax3.set_xlabel('T_out [C°]')
+        ax3.set_ylabel('Energy Consumption [kWh]')
         ax3.set_title('WEEK resample')
+        ax3.legend()
         ax3.grid(linestyle='--', linewidth=.4, which='both')
         plt.subplots_adjust(bottom=0.3, right=0.8, top=0.9, hspace=1)
-        plt.savefig(fname=f'../../plots/energy_signature_{name}.png', dpi=400)
+        plt.savefig(fname=f'../../plots/energy_signature_{name}_tout.png', dpi=400)
         plt.close()
 
 
-        return ls_r
+
+
 
 class Optimal_config :
     
@@ -787,5 +827,6 @@ if __name__ == '__main__':
     learn = Prediction()
     df = pd.read_csv('eplus_simulation/eplus/eplusout.csv')
     df = learn.create_csv(df)
+
 
 
