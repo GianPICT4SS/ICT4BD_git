@@ -11,6 +11,7 @@ from keras.models import Sequential, Model, model_from_json
 from keras.layers import LSTM, Dense, GRU
 from keras.engine.input_layer import Input
 from keras.utils import plot_model
+from keras.optimizers import Adam
 import math
 from sklearn.metrics import r2_score
 import json
@@ -27,7 +28,7 @@ class NoModelFound(Exception):
 class EarlyStoppingAtNormDifference(tf.keras.callbacks.Callback):
 	"""Stop training when the loss is at its min, i.e. the loss stops decreasing."""
 
-	def __init__(self, patience=0):
+	def __init__(self, patience=1):
 		super(EarlyStoppingAtNormDifference, self).__init__()
 
 		self.patience = patience
@@ -47,11 +48,12 @@ class EarlyStoppingAtNormDifference(tf.keras.callbacks.Callback):
 		if current > best:
 			perc_increase = (current - best) / best * 100
 			print(f'Epoch {epoch} has seen an increase of {perc_increase:.2f} % in loss metric')
+			return 0
 		else:
 			perc_decrese = (best - current) / best * 100
 			print(f'Epoch {epoch} has seen a decrease of {perc_decrese:.2f} % in loss metric')
 			abs_diff = np.linalg.norm((best - current))
-			if abs_diff <= k:
+			if abs_diff < k:
 				return 0
 			else:
 				return 1
@@ -65,7 +67,7 @@ class EarlyStoppingAtNormDifference(tf.keras.callbacks.Callback):
 		  self.best_weights = self.model.get_weights()
 		else:
 		  self.wait += 1
-		  if self.wait >= self.patience:
+		  if self.wait > self.patience:
 		    self.stopped_epoch = epoch
 		    self.model.stop_training = True
 		    print('Restoring model weights from the end of the best epoch.')
@@ -121,18 +123,18 @@ class TemperatureNN:
 	def create_train_test(self, size_train=0.7, size_val=0.1):
 		dataset = self.create_data()
 		N = dataset.shape[0]
-		size_test = size_train + size_val
-		xtrain, xtest, xval = dataset[0:int(N*size_train)], dataset[int(N*size_train):int(N*size_test)], dataset[int(N*size_test)::]
+		size_test = 1 - size_train - size_val
+		xtrain, xtest, xval = dataset[0:int(N*size_train)], dataset[int(N*size_train):int(N*(size_test + size_train))], dataset[int(N*(size_test + size_train))::]
 
 		return xtrain, xtest, xval
 
-	def create_model(self, look_back=24, future=6, n1=50, epochs=30, train=True, load_model=None):
+	def create_model(self, look_back=24, future=6, n1=256, epochs=30, train=True, load_model=None, lr=0.001):
 		path = Path(self.path_plots)
 		xtrain, xtest, xval = self.create_train_test()
-
 		xtrain, ytrain = self.create_dataset(xtrain, look_back, future)
 		xtest, ytest = self.create_dataset(xtest, look_back, future)
 		xval, yval = self.create_dataset(xval, look_back, future)
+
 		#LSTM needs as input: [samples, timesteps, features]
 		n_outputs = ytrain.shape[2]
 		future = ytrain.shape[1]
@@ -140,20 +142,29 @@ class TemperatureNN:
 			inp = Input(shape=(xtrain.shape[1], xtrain.shape[2]))
 
 			gru1 = GRU(n1, return_sequences=True)(inp)
-			gru2 = GRU(n1//2, return_sequences=True, activation='relu', dropout=0.1)(gru1)
-			gru3 = GRU(n1//4, activation='relu', dropout=0.05)(gru2)
+			
+			#Number_of_hidden_layers ~ (N_samples)/(alfa*(N_input + N_output)) --> ~9 in this case for alfa=5
+			gru2 = GRU(n1//2, return_sequences=True, dropout=0.2, recurrent_dropout=0.1)(gru1)
+			gru3 = GRU(n1//4, return_sequences=True, dropout=0.1, recurrent_dropout=0.1)(gru2)
+			gru4 = GRU(n1//6, return_sequences=True, dropout=0.1, recurrent_dropout=0.1)(gru3)
+			gru5 = GRU(n1//8, return_sequences=True, dropout=0.1, recurrent_dropout=0.1)(gru4)
+			gru6 = GRU(n1//4, return_sequences=True, dropout=0.1, recurrent_dropout=0.1)(gru5)
+			gru7 = GRU(n1//2, return_sequences=True, dropout=0.1, recurrent_dropout=0.1)(gru6)
+			gru8 = GRU(n1//8, return_sequences=True, dropout=0.1, recurrent_dropout=0.1)(gru7)
+			
+			gru9 = GRU(n1//4, dropout=0.05)(gru8)
 
-			#output_layers: 3 layers (3 temperatures) x n_neuros==future (how much in the future to predict)
-			d1 = Dense(future)(gru3)
-			d2 = Dense(future)(gru3)
-			d3 = Dense(future)(gru3)
+			#output_layers: 3 layers (3 temperatures) x n_neurons==future (how much in the future to predict)
+			d1 = Dense(future)(gru9)
+			d2 = Dense(future)(gru9)
+			d3 = Dense(future)(gru9)
 
 			model = Model(inputs=inp, outputs=[d1,d2,d3])
 			
 			print(model.summary())
 			plot_model(model, to_file=f'{path}/Model.png', show_shapes=True, dpi=300)
 
-			model.compile(loss='mae', optimizer='adam')
+			model.compile(loss='mae', optimizer=Adam(learning_rate=lr))
 			history = model.fit(xtrain, [ytrain[:,:,i] for i in range(n_outputs)], epochs=epochs, 
 				# validation_data=(xval,[yval[:,:,i] for i in range(n_outputs)]),
 				# validation_steps=200, steps_per_epoch=100,
@@ -199,8 +210,8 @@ class TemperatureNN:
 			print(f'{name} R2 Score: %.2f (1=Best Possible Model)' % (test_score))
 
 			plt.figure(figsize=(15,6))
-			plt.plot(a[:,-1], label='real_data')
-			plt.plot(b[:,-1], label='predictions')
+			plt.plot(a[-50:,0], label='real_data')
+			plt.plot(b[-50:,0], label='predictions')
 			plt.legend()
 			plt.grid()
 			plt.title(f'{name}_RealVSPrediction_Temp_in{i+1}[C]')
@@ -229,11 +240,34 @@ class TemperatureNN:
 		plt.xlabel('Epochs')
 		plt.savefig(f'{path}/TrainLoss.png')
 
+	#TODO: possible new method for training better
+	def generator(self, data, lookback, delay, min_index, max_index, shuffle=False, batch_size=12, step=1):
+		if max_index is None:
+			max_index = len(data) - delay - 1
+		i = min_index + lookback
+		while 1:
+			if shuffle:
+				rows = np.random.randint(min_index + lookback, max_index, size=batch_size)
+			else:
+				if i + batch_size >= max_index:
+					i = min_index + lookback
+				rows = np.arange(i, min(i + batch_size, max_index))
+				i += len(rows)
+
+			samples = np.zeros((len(rows), lookback // step, data.shape[-1]))
+			targets = np.zeros((len(rows),))
+
+			for j, row in enumerate(rows):
+				indices = range(rows[j] - lookback, rows[j], step)
+				samples[j] = data[indices]
+				targets[j] = data[rows[j] + delay][1]
+			yield samples, targets
+
 if __name__ == '__main__':
 	nn = TemperatureNN()
 	past = 24
-	future = 3
-	epochs = 10
+	future = 2
+	epochs = 30
 
 	name = f"Model_epochs{epochs}_history{past}_future{future}"
 	model_name = f"{name}.h5"
@@ -245,5 +279,6 @@ if __name__ == '__main__':
 	else:
 		model = nn.load_model(json_name, model_name)
 		nn.create_model(look_back=past, future=future, epochs=epochs, train=0, load_model=model)
+
 
 		
