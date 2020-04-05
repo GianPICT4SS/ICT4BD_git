@@ -5,7 +5,7 @@ the simulatiom are saved as several plots. """
 
 from src.method_building import Optimal_config as opt
 
-path = '../../files/idf/original/'
+path = '../../files/idf/originals/'
 epw = '../../files/epw/ITA_Torino.160590_IWEC.epw'
 
 for idf in os.listdir(path):

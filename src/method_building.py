@@ -442,15 +442,23 @@ class Prediction():
         return df_z
 
     @classmethod
-    def energy_signature(cls, iddfile='', fname='eplusout.csv', epw='', name=''):
+    def energy_signature(cls, iddfile, idf_path, epw_path, name):
+        """
+
+        :param iddfile: Energy+.idd file path
+        :param idf_path: idf file path
+        :param epw_path: weather file path
+        :param name: flag name indicating which type of idf is used
+        :return: None
+        """
 
 
         try:
-            IDF.setiddname('/Applications/EnergyPlus-8-1-0/Energy+.idd')
+            IDF.setiddname(iddfile)
         except eppy.modeleditor.IDDAlreadySetError as e:
             pass
-        idf = IDF(fname, epw)
-        idf.run(readvars=True)
+        idf = IDF(idf_path, epw_path)
+        idf.run(readvars=True) # Eplus Simulation
 
         fname = 'eplusout_' + str(name) + '.csv'
         os.system(f'cp eplusout.csv ../eplus_simulation/eplus/{fname}')

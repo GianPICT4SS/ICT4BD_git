@@ -1,4 +1,3 @@
-""" not more useful because this step is done inside retofit.py bu using parametri_analysis method"""
 from src.method_building import Prediction
 
 learn = Prediction()
