@@ -2,8 +2,9 @@
 parameters to change and calling the parametric_analysis method of the class Prediction. For each simulation a
 energy signature is done, in order to see the effect on the save energy capacity of the building. The output of
 the simulatiom are saved as several plots. """
-
-from src.method_building import Optimal_config as opt
+import sys
+sys.path.insert(1, '../')
+from method_building import Optimal_config as opt
 
 path = '../../files/idf/originals/'
 epw = '../../files/epw/ITA_Torino.160590_IWEC.epw'

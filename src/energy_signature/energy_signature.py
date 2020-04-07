@@ -1,4 +1,6 @@
-from src.method_building import Prediction
+import sys
+sys.path.insert(1, '../')
+from method_building import Prediction
 
 learn = Prediction()
 # =============================================

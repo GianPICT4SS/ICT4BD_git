@@ -1,5 +1,6 @@
 # Python >3.4 is required
 import sys
+
 assert sys.version_info >= (3, 5)
 
 # Scikit-Learn > 0.19 is required
