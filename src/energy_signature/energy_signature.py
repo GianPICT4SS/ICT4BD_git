@@ -1,12 +1,14 @@
 import sys
 sys.path.insert(1, '../')
 from method_building import Prediction
+from pathlib import Path
 
 learn = Prediction()
 # =============================================
 # Files
 iddfile='/usr/local/EnergyPlus-9-0-1/Energy+.idd'
-fname = '../../files/idf/Office_On_corrected.idf'
-epw = '../../files/epw/ITA_Torino.160590_IWEC.epw'
+fname = Path('../files/idf/optimal')
+epw = Path('../files/epw/ITA_Torino.160590_IWEC.epw')
 
-learn.energy_signature()
+for idf in fname.iterdir():
+    learn.energy_signature(iddfile=iddfile, idf_path=idf, epw_path=epw)

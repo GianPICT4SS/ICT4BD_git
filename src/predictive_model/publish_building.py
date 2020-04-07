@@ -7,14 +7,16 @@ import json
 import datetime
 import pandas as pd
 
+import sys
+sys.insert('../')
 
-from src.method_building import Prediction
-from src.predictive_model.mqtt_building import Building_publisher
+from method_building import Prediction
+from predictive_model.mqtt_building import Building_publisher
 
 learn = Prediction()
 
 
-df = pd.read_csv('../eplus_simulation/eplus/eplusout.csv')
+df = pd.read_csv('eplus_simulation/eplus/eplusout.csv')
 print('DATASET READY')
 # Create a user csv
 df = learn.create_csv(df)
@@ -34,6 +36,6 @@ for i in range(df.shape[0]-1):
         dict_['Payload'][col] = row[col]
     msg = json.dumps(dict_, indent=4)
     pub.publish(msg=msg)
-    time.sleep(3)
+    #time.sleep(3)
 pub.stop()
 

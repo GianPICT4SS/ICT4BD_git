@@ -593,7 +593,7 @@ class Optimal_config :
         self.building = ef.get_building(idf)
         self.name = os.path.basename(idf).replace('.idf','')
         self.epw = epw
-        self.evaluation_output = '../../files/outputs/'+self.name+'_DB.xlsx'
+        self.evaluation_output = '../files/outputs/'+self.name+'_DB.xlsx'
         IDD_file = '/usr/local/EnergyPlus-9-0-1/Energy+.idd'
 
         self.energy_evaluator(self.building)
@@ -663,7 +663,7 @@ class Optimal_config :
         
         ax.set_title("heatmap of correlations")
         fig.tight_layout()
-        plt.savefig('../../plots/'+self.name+'_heatmap.png')
+        plt.savefig('../plots/'+self.name+'_heatmap.png')
 
     def plotting(self,file):
         df = pd.read_excel(file)
@@ -696,7 +696,7 @@ class Optimal_config :
             plt.legend()
             plt.xlabel('thickness [m]')
             plt.ylabel('Heating [kWqualcosa]')
-            plt.savefig('../../plots/thickness_wall/'+self.name+str(title)+'.png')
+            plt.savefig('../plots/thickness_wall/'+self.name+str(title)+'.png')
             plt.close()
         
         #plot U-window and wall thickness FIXED and thickness roof varying (3 wwr configurations):
@@ -719,7 +719,7 @@ class Optimal_config :
             plt.legend()
             plt.xlabel('roof thickness[m]')
             plt.ylabel('Heating [kWqualcosa]')
-            plt.savefig('../../plots/thickness_roof/'+self.name+str(title)+'.png')
+            plt.savefig('../plots/thickness_roof/'+self.name+str(title)+'.png')
             #plt.savefig('plots/thickness_roof/'+str(title)+'U_window.png')
             plt.close()
 
@@ -745,7 +745,7 @@ class Optimal_config :
             plt.legend()
             plt.xlabel('window U [kWqualcosa]')
             plt.ylabel('Heating [kWqualcosa]')
-            plt.savefig('../../plots/U_window/'+self.name+str(title)+'.png')
+            plt.savefig('../plots/U_window/'+self.name+str(title)+'.png')
             #plt.savefig('plots/U_window/'+str(title)+'U_window.png')
             plt.close()
 
@@ -824,7 +824,7 @@ class Optimal_config :
         
 
         #SAVE THE ULTIMATE IDF FILE chose the directory in saveas
-        idf1.saveas('../../files/idf/optimal/'+self.name+'_Optimal.idf')
+        idf1.saveas('../files/idf/optimal/'+self.name+'_Optimal.idf')
 
 
 
