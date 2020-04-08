@@ -21,11 +21,8 @@ from geomeppy import IDF as geom_IDF
 from besos import eppy_funcs as ef
 from besos import sampling
 from besos.evaluator import EvaluatorEP
-<<<<<<< HEAD
 from besos.parameters import RangeParameter, FieldSelector, FilterSelector, Parameter, expand_plist, wwr, CategoryParameter, GenericSelector
-=======
 from besos.parameters import FieldSelector, Parameter, expand_plist, CategoryParameter, wwr
->>>>>>> a2e55d56a618bb75e4d79c381360a397c760b205
 from besos.problem import EPProblem
 
 import logging

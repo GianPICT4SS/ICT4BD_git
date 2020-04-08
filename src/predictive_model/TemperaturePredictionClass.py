@@ -66,21 +66,21 @@ class EarlyStoppingAtNormDifference(tf.keras.callbacks.Callback):
 	def on_epoch_end(self, epoch, logs=None):
 		current = logs.get('val_loss')
 		if self.check_condition(current, self.best, epoch):
-		  self.best = current
-		  self.wait = 0
-		  # Record the best weights if current results is better (less).
-		  self.best_weights = self.model.get_weights()
+			self.best = current
+			self.wait = 0
+			# Record the best weights if current results is better (less).
+			self.best_weights = self.model.get_weights()
 		else:
-		  self.wait += 1
-		  if self.wait > self.patience:
-		    self.stopped_epoch = epoch
-		    self.model.stop_training = True
-		    print('Restoring model weights from the end of the best epoch.')
-		    self.model.set_weights(self.best_weights)
+			self.wait += 1
+			if self.wait > self.patience:
+				self.stopped_epoch = epoch
+				self.model.stop_training = True
+				print('Restoring model weights from the end of the best epoch.')
+				self.model.set_weights(self.best_weights)
 
 	def on_train_end(self, logs=None):
 		if self.stopped_epoch > 0:
-		  print('Epoch %05d: early stopping' % (self.stopped_epoch + 1))
+			print('Epoch %05d: early stopping' % (self.stopped_epoch + 1))
 
 
 class TemperatureNN:
@@ -313,6 +313,3 @@ if __name__ == '__main__':
 	else:
 		model = nn.load_model(json_name, model_name)
 		nn.create_model(look_back=past, future=future, epochs=epochs, train=1, load_model=model, mode='1-output')
-
-
-		
