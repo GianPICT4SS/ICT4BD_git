@@ -8,8 +8,8 @@ import datetime
 import pandas as pd
 
 
-from src.method_building import Prediction
-from src.predictive_model.mqtt_building import Building_publisher
+from method_building import Prediction
+from predictive_model.mqtt_building import Building_publisher
 
 learn = Prediction()
 
@@ -34,6 +34,5 @@ for i in range(df.shape[0]-1):
         dict_['Payload'][col] = row[col]
     msg = json.dumps(dict_, indent=4)
     pub.publish(msg=msg)
-    time.sleep(3)
 pub.stop()
 

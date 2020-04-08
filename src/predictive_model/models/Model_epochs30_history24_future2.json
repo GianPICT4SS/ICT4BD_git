@@ -121,7 +121,7 @@
                     "recurrent_constraint": null,
                     "bias_constraint": null,
                     "dropout": 0.2,
-                    "recurrent_dropout": 0.1,
+                    "recurrent_dropout": 0.2,
                     "implementation": 2,
                     "reset_after": false
                 },
@@ -179,8 +179,8 @@
                     "kernel_constraint": null,
                     "recurrent_constraint": null,
                     "bias_constraint": null,
-                    "dropout": 0.1,
-                    "recurrent_dropout": 0.1,
+                    "dropout": 0.2,
+                    "recurrent_dropout": 0.2,
                     "implementation": 2,
                     "reset_after": false
                 },
@@ -207,7 +207,7 @@
                     "go_backwards": false,
                     "stateful": false,
                     "unroll": false,
-                    "units": 42,
+                    "units": 64,
                     "activation": "tanh",
                     "recurrent_activation": "sigmoid",
                     "use_bias": true,
@@ -238,7 +238,7 @@
                     "kernel_constraint": null,
                     "recurrent_constraint": null,
                     "bias_constraint": null,
-                    "dropout": 0.1,
+                    "dropout": 0.2,
                     "recurrent_dropout": 0.1,
                     "implementation": 2,
                     "reset_after": false
@@ -379,130 +379,12 @@
                     "name": "gru_7",
                     "trainable": true,
                     "dtype": "float32",
-                    "return_sequences": true,
-                    "return_state": false,
-                    "go_backwards": false,
-                    "stateful": false,
-                    "unroll": false,
-                    "units": 128,
-                    "activation": "tanh",
-                    "recurrent_activation": "sigmoid",
-                    "use_bias": true,
-                    "kernel_initializer": {
-                        "class_name": "VarianceScaling",
-                        "config": {
-                            "scale": 1.0,
-                            "mode": "fan_avg",
-                            "distribution": "uniform",
-                            "seed": null
-                        }
-                    },
-                    "recurrent_initializer": {
-                        "class_name": "Orthogonal",
-                        "config": {
-                            "gain": 1.0,
-                            "seed": null
-                        }
-                    },
-                    "bias_initializer": {
-                        "class_name": "Zeros",
-                        "config": {}
-                    },
-                    "kernel_regularizer": null,
-                    "recurrent_regularizer": null,
-                    "bias_regularizer": null,
-                    "activity_regularizer": null,
-                    "kernel_constraint": null,
-                    "recurrent_constraint": null,
-                    "bias_constraint": null,
-                    "dropout": 0.1,
-                    "recurrent_dropout": 0.1,
-                    "implementation": 2,
-                    "reset_after": false
-                },
-                "inbound_nodes": [
-                    [
-                        [
-                            "gru_6",
-                            0,
-                            0,
-                            {}
-                        ]
-                    ]
-                ]
-            },
-            {
-                "name": "gru_8",
-                "class_name": "GRU",
-                "config": {
-                    "name": "gru_8",
-                    "trainable": true,
-                    "dtype": "float32",
-                    "return_sequences": true,
-                    "return_state": false,
-                    "go_backwards": false,
-                    "stateful": false,
-                    "unroll": false,
-                    "units": 32,
-                    "activation": "tanh",
-                    "recurrent_activation": "sigmoid",
-                    "use_bias": true,
-                    "kernel_initializer": {
-                        "class_name": "VarianceScaling",
-                        "config": {
-                            "scale": 1.0,
-                            "mode": "fan_avg",
-                            "distribution": "uniform",
-                            "seed": null
-                        }
-                    },
-                    "recurrent_initializer": {
-                        "class_name": "Orthogonal",
-                        "config": {
-                            "gain": 1.0,
-                            "seed": null
-                        }
-                    },
-                    "bias_initializer": {
-                        "class_name": "Zeros",
-                        "config": {}
-                    },
-                    "kernel_regularizer": null,
-                    "recurrent_regularizer": null,
-                    "bias_regularizer": null,
-                    "activity_regularizer": null,
-                    "kernel_constraint": null,
-                    "recurrent_constraint": null,
-                    "bias_constraint": null,
-                    "dropout": 0.1,
-                    "recurrent_dropout": 0.1,
-                    "implementation": 2,
-                    "reset_after": false
-                },
-                "inbound_nodes": [
-                    [
-                        [
-                            "gru_7",
-                            0,
-                            0,
-                            {}
-                        ]
-                    ]
-                ]
-            },
-            {
-                "name": "gru_9",
-                "class_name": "GRU",
-                "config": {
-                    "name": "gru_9",
-                    "trainable": true,
-                    "dtype": "float32",
                     "return_sequences": false,
                     "return_state": false,
                     "go_backwards": false,
                     "stateful": false,
                     "unroll": false,
-                    "units": 64,
+                    "units": 32,
                     "activation": "tanh",
                     "recurrent_activation": "sigmoid",
                     "use_bias": true,
@@ -541,7 +423,7 @@
                 "inbound_nodes": [
                     [
                         [
-                            "gru_8",
+                            "gru_6",
                             0,
                             0,
                             {}
@@ -581,7 +463,7 @@
                 "inbound_nodes": [
                     [
                         [
-                            "gru_9",
+                            "gru_7",
                             0,
                             0,
                             {}
@@ -621,47 +503,7 @@
                 "inbound_nodes": [
                     [
                         [
-                            "gru_9",
-                            0,
-                            0,
-                            {}
-                        ]
-                    ]
-                ]
-            },
-            {
-                "name": "dense_3",
-                "class_name": "Dense",
-                "config": {
-                    "name": "dense_3",
-                    "trainable": true,
-                    "dtype": "float32",
-                    "units": 2,
-                    "activation": "linear",
-                    "use_bias": true,
-                    "kernel_initializer": {
-                        "class_name": "VarianceScaling",
-                        "config": {
-                            "scale": 1.0,
-                            "mode": "fan_avg",
-                            "distribution": "uniform",
-                            "seed": null
-                        }
-                    },
-                    "bias_initializer": {
-                        "class_name": "Zeros",
-                        "config": {}
-                    },
-                    "kernel_regularizer": null,
-                    "bias_regularizer": null,
-                    "activity_regularizer": null,
-                    "kernel_constraint": null,
-                    "bias_constraint": null
-                },
-                "inbound_nodes": [
-                    [
-                        [
-                            "gru_9",
+                            "gru_7",
                             0,
                             0,
                             {}
@@ -685,11 +527,6 @@
             ],
             [
                 "dense_2",
-                0,
-                0
-            ],
-            [
-                "dense_3",
                 0,
                 0
             ]

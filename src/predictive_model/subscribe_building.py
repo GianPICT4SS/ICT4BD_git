@@ -51,8 +51,6 @@ class InfluxDB:
 			json_body = self.format_json_body(body)
 			self.client.write_points(json_body)
 
-			time.sleep(3)
-
 if __name__ == '__main__':
 	influx = InfluxDB()
 	influx.run()
