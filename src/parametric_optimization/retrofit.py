@@ -17,9 +17,24 @@ dinamic_parameter = {'class_name': 'WindowMaterial:SimpleGlazingSystem',
                      'object_name': 'Simple 1001',
                     'field_name': 'UFactor'}
 
-fixed_parameter = {'class_name': '', 'object_name': '','field_name': ''}
+fixed_parameters = [{'class_name': 'Material',
+                     'object_name': 'SuperInsulating_01445',
+                    'field_name': 'Thickness'}, {'class_name': 'WindowMaterial:SimpleGlazingSystem',
+                     'object_name': 'Simple 1001',
+                    'field_name': 'UFactor'}]
+
+#dinamic_parameter = {'class_name': 'Material',
+ #                    'object_name': 'SuperInsulating_00795',
+  #                  'field_name': 'Thickness'}
+
+objectives = ['Electricity:Facility', 'DistrictCooling:Facility', 'DistrictHeating:Facility']
+
 for idf in os.listdir(path):
   #Parametric = opt(idf, epw)
+  learn.parametric_analysis(dinamic_parameter=dinamic_parameter, fixed_parameters=fixed_parameters,
+                            objectives=objectives,
+                            idf_path=idf,
+                            epw_path=epw)
 
   
 
