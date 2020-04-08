@@ -634,8 +634,8 @@ class Optimal_config :
         outputs = outputs.sort_values(by =['Insulation Thickness wall','windows-U-factor','Insulation Thickness roof'])
         
         outputs.to_excel(self.evaluation_output)
-        print(outputs)
-        print(outputs.describe())
+        #print(outputs)
+        #print(outputs.describe())
     
 
     def correlation (self,file):
@@ -669,11 +669,10 @@ class Optimal_config :
         df = pd.read_excel(file)
         df = df.round(decimals={'Insulation Thickness wall':3,'windows-U-factor':1,'Insulation Thickness roof':3})
         list1=df['Insulation Thickness wall'].unique() #variation thickness
-        print (len(list1))
         list2=df['windows-U-factor'].unique() #variation u window
-        print(len(list2))
+        #print(len(list2))
         list3= df['Insulation Thickness roof'].unique()
-        print (len(list3))
+        #print (len(list3))
 
         #plot U-window and roof thickness FIXED and thickness wall varying (3 wwr configurations):
         for wwr in [0.15,0.5,0.9]:
@@ -684,7 +683,7 @@ class Optimal_config :
 
                 i = list2[k]
                 j = list3[k]
-                tmp_df = df.loc [(df['windows-U-factor']== i)&(df['Insulation Thickness roof']==j)]
+                tmp_df = df.loc[(df['windows-U-factor']== i)&(df['Insulation Thickness roof']==j)]
                 tmp_df = tmp_df.loc[tmp_df['Window to Wall Ratio']==wwr]
                 tmp_df = tmp_df.sort_values(by=['Insulation Thickness wall'])
                 label = 'U-wind='+str(i)+',roof='+str(j)
@@ -696,7 +695,7 @@ class Optimal_config :
             plt.legend()
             plt.xlabel('thickness [m]')
             plt.ylabel('Heating [kWqualcosa]')
-            plt.savefig('../plots/thickness_wall/'+self.name+str(title)+'.png')
+            plt.savefig('../plots/'+self.name+str(title)+'.png')
             plt.close()
         
         #plot U-window and wall thickness FIXED and thickness roof varying (3 wwr configurations):
@@ -733,11 +732,11 @@ class Optimal_config :
 
                 i = list1[k]
                 j = list3[k]
-                tmp_df = df.loc [(df['Insulation Thickness wall']== i)&(df['Insulation Thickness roof']==j)]
+                tmp_df = df.loc[(df['Insulation Thickness wall']== i)&(df['Insulation Thickness roof']==j)]
                 tmp_df = tmp_df.loc[tmp_df['Window to Wall Ratio']==wwr]
                 tmp_df = tmp_df.sort_values(by=['windows-U-factor'])
-                print (tmp_df)
-                print (tmp_df['windows-U-factor'])
+                #print (tmp_df)
+                #print (tmp_df['windows-U-factor'])
                 label = 'wall='+str(i)+',roof='+str(j)
                 x = list(tmp_df['windows-U-factor'])
                 y = list(tmp_df['DistrictHeating:Facility'])
@@ -808,8 +807,8 @@ class Optimal_config :
         #window material simple glazing...
         #WINDOW: 'Simple 1001', POSITION: 0
         
-        print(df.keys())
-        print(df.loc[best_index,'Insulation Thickness wall'])
+        #print(df.keys())
+        #print(df.loc[best_index,'Insulation Thickness wall'])
         Material[2].Thickness = df.loc[best_index,'Insulation Thickness roof']
         Material[7].Thickness = df.loc[best_index,'Insulation Thickness wall']
         Window_Material[0].UFactor = df.loc[best_index,'windows-U-factor']

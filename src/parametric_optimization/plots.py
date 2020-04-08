@@ -63,7 +63,7 @@ ax1.set_ylabel('districtCooling [MWh]')
 #ax1.legend(loc='upper right', bbox_to_anchor=(0.5, 0.5, 0.5, 0.5))
 ax1.grid(linestyle='--', linewidth=.4, which='both')
 
-
+# District Heating
 ax2.plot(thickness_walls_0, district_Heating_ON_0, label='[0.1 m / 0.4 W/m^2K]', color='brown')
 ax2.plot(thickness_walls_1, district_Heating_ON_1, label='[0.2 m / 0.9 W/m^2K]')
 ax2.plot(thickness_walls_2, district_Heating_ON_2, label='[0.3 m / 1.6 W/m^2K]')
