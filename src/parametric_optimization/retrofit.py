@@ -6,13 +6,21 @@ the simulatiom are saved as several plots. """
 import os
 import sys
 sys.path.insert(1, '../')
-from method_building import Optimal_config as opt
+#from method_building import Optimal_config as opt
+from method_building import Prediction
 
+learn = Prediction()
 path = '../files/idf/originals/'
 epw = '../files/epw/ITA_Torino.160590_IWEC.epw'
 
+dinamic_parameter = {'class_name': 'WindowMaterial:SimpleGlazingSystem',
+                     'object_name': 'Simple 1001',
+                    'field_name': 'UFactor'}
+
+fixed_parameter = {'class_name': '', 'object_name': '','field_name': ''}
 for idf in os.listdir(path):
-  Parametric = opt(idf, epw)
+  #Parametric = opt(idf, epw)
+
   
 
 

@@ -265,7 +265,7 @@ class Prediction():
         parameter: dinamic_parameter: a dictionary containing information about the parameter that must be changed.
         {class_name: Material, object_name: Simply_1001, field_name: UFactor}
         fixed_parameters: a list of dictionary containing information about the parameters that must be fixed.
-        The dictionary has the same structure of the dinamic_parameter dictionary.
+        This dictionary has the same structure of the dinamic_parameter dictionary.
         objectives: a list with the objectives,
         idf_path: a str with the path for idf file,
         epw_path: str path for epw file.
@@ -316,8 +316,8 @@ class Prediction():
                 outputs = evaluator.df_apply(df_samples, keep_input=True)
                 logger.info(f"Simulation number {j} done.")
                 iddfile = '/usr/local/EnergyPlus-9-0-1/Energy+.idd'
-                fname = '../../files/out_dir/BESOS_Output/in.idf'
-                epw = '../../files/epw/ITA_Torino.160590_IWEC.epw'
+                fname = '../files/out_dir/BESOS_Output/in.idf'
+                epw = '../files/epw/ITA_Torino.160590_IWEC.epw'
                 cls.energy_signature(iddfile=iddfile, fname=fname, epw=epw, name=j)
                 print('###############################')
                 logger.info(f'Energy signature {j} done.')
@@ -325,7 +325,7 @@ class Prediction():
                 df_samples['DistrictHeating:Facility'] = outputs['DistrictHeating:Facility']
                 df_samples['DistrictCooling:Facility'] = outputs['DistrictCooling:Facility']
                 df_samples['Electricity:Facility'] = outputs['Electricity:Facility']
-                df_samples.to_csv('../../files/outputs/outputs_60p_ch_ufw' + str(j) + '.csv')
+                df_samples.to_csv('../files/outputs/outputs_60p_ch_ufw' + str(j) + '.csv')
         elif dinamic_parameter['class_name'] == 'Material':
             logger.info(f"Parametric analysis for {dinamic_parameter['object_name']} will start.")
             range_t = np.linspace(0.01, 0.5, n_points)  # metri
@@ -344,8 +344,8 @@ class Prediction():
                 outputs = evaluator.df_apply(df_samples, keep_input=True)
                 logger.info(f"Simulation number {j} done.")
                 iddfile = '/usr/local/EnergyPlus-9-0-1/Energy+.idd'
-                fname = '../../files/out_dir/BESOS_Output/in.idf'
-                epw = '../../files/epw/ITA_Torino.160590_IWEC.epw'
+                fname = '../files/out_dir/BESOS_Output/in.idf'
+                epw = '../files/epw/ITA_Torino.160590_IWEC.epw'
                 cls.energy_signature(iddfile=iddfile, fname=fname, epw=epw, name=j)
                 print('###############################')
                 logger.info(f'Energy signature {j} done.')
@@ -354,7 +354,7 @@ class Prediction():
                 df_samples['DistrictCooling:Facility'] = outputs['DistrictCooling:Facility']
                 df_samples['Electricity:Facility'] = outputs['Electricity:Facility']
                 df_samples.to_csv(
-                '../../files/outputs/outputs_60p_ch_twr' + str(j) + '.csv')
+                '../files/outputs/outputs_60p_ch_twr' + str(j) + '.csv')
 
     @classmethod
     def create_csv(cls, df):
