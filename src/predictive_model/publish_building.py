@@ -36,6 +36,9 @@ for i in range(df.shape[0]-1):
         dict_['Payload'][col] = row[col]
     msg = json.dumps(dict_, indent=4)
     pub.publish(msg=msg)
+<<<<<<< HEAD
     #time.sleep(3)
+=======
+>>>>>>> a2e55d56a618bb75e4d79c381360a397c760b205
 pub.stop()
 
