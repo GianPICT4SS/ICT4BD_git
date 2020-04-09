@@ -597,36 +597,50 @@ class Optimal_config :
         #IDD_file = '/usr/local/EnergyPlus-9-0-1/Energy+.idd'
         IDD_file = '/home/ict4db/py3/lib/python3.6/site-packages/besos-1.3.3-py3.6.egg/Data/example_idd.idd'
         self.energy_evaluator(self.building)
-        #self.correlation(self.evaluation_output)
-        #self.plotting(self.evaluation_output)
-        #self.final_idf(idf,IDD_file)
+        self.correlation(self.evaluation_output)
+        self.plotting(self.evaluation_output)
+        self.final_idf(idf,IDD_file)
 
     def energy_evaluator(self,building):
         
         list1=np.linspace(0.01,0.35,6,endpoint=False)
         list2=np.linspace(0.9,6,6,endpoint=False)
+        #list1=np.linspace(0.01,0.35,2,endpoint=False) #test
+        #list2=np.linspace(0.9,6,2,endpoint=False) #test
         list1 = np.round(list1,decimals=3)
         list2 = np.round(list2,decimals=2)
         wwr_list = [0.15,0.5,0.9]
+        #wwr_list = [0.15] #test
         
 
         insul_range = CategoryParameter(options=list1)
         U_window_range = CategoryParameter(options=list2)
         wwr_range = CategoryParameter(options=wwr_list)
+        #wwr_range = RangeParameter(0.15,0.9) #test
+
         insulation_wall = FieldSelector(class_name='Material', object_name='SuperInsulating_00795', field_name='Thickness')
         insulation_roof = FieldSelector(class_name='Material', object_name='SuperInsulating_01445', field_name='Thickness')
         glazing = FieldSelector(class_name='WindowMaterial:SimpleGlazingSystem',object_name ='Simple 1001',field_name ='U-Factor')
+        
+        
+        #glazing = FieldSelector(class_name='WindowMaterial:SimpleGlazingSystem',object_name ='Simple 1001',field_name ='UFactor')
         
         insul_param_wall = Parameter(selector=insulation_wall,value_descriptor=insul_range,name ='Insulation Thickness wall')
         insul_param_roof = Parameter(selector=insulation_roof,value_descriptor=insul_range,name ='Insulation Thickness roof')
         U_window_param = Parameter(selector=glazing,value_descriptor=U_window_range,name ='windows-U-factor')
         windows_to_wall = wwr(wwr_range) #this function equivalent to fieldselctor+parameter functions 
         
+    
+
+
         #CREATION OF THE PROBLEM
         parameters=[insul_param_wall]+[windows_to_wall]+[U_window_param]+[insul_param_roof]
+        #parameters=[insul_param_wall]+[windows_to_wall]+[more_parameters]+[insul_param_roof] #test
+        
         objectives = ['Electricity:Facility','DistrictHeating:Facility','DistrictCooling:Facility'] # these get made into `MeterReader` or `VariableReader`
         problem = EPProblem(parameters, objectives)
         samples = self.create_samples(wwr_list,list1,list1,list2)
+       
         
         #CREATING EVALUATIONS
         evaluator = EvaluatorEP(problem, building, out_dir='OUTPUTS', err_dir='ERR_OUTPUTS' ,epw=self.epw) # evaluator = problem + building
@@ -791,9 +805,13 @@ class Optimal_config :
             E = row['Electricity']
             C = row['Cooling']
             H = row['Heating']
+            E_diff = best_E-E
+            H_diff = best_H-H
+            C_diff = best_C-C
 
-            #if (E < best_E and H < best_H and C < best_C):
-            if (H < best_H and C < best_C):
+            #if (E <= best_E and H < best_H and C < best_C):
+            #if (H < best_H and C < best_C):
+            if E_diff >= 100 and C_diff >= 500 and H_diff >= 500:
                 best_index = index
                 best_E = E
                 best_C = C
@@ -835,6 +853,9 @@ class Optimal_config :
         Material[7].Thickness = df.loc[best_index,'Insulation Thickness wall']
         Window_Material[0].UFactor = df.loc[best_index,'windows-U-factor']
         
+        #print (Window_Material[0].UFactor)
+
+
         #changing the wwr
         
         new_wwr = df.loc[best_index,'Window to Wall Ratio']
