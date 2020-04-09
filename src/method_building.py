@@ -22,7 +22,6 @@ from besos import eppy_funcs as ef
 from besos import sampling
 from besos.evaluator import EvaluatorEP
 from besos.parameters import RangeParameter, FieldSelector, FilterSelector, Parameter, expand_plist, wwr, CategoryParameter, GenericSelector
-from besos.parameters import FieldSelector, Parameter, expand_plist, CategoryParameter, wwr
 from besos.problem import EPProblem
 
 import logging
@@ -594,13 +593,13 @@ class Optimal_config :
         self.building = ef.get_building(idf)
         self.name = os.path.basename(idf).replace('.idf','')
         self.epw = epw
-        self.evaluation_output = '../files/outputs/'+self.name+'_DB.xlsx'
-        IDD_file = '/usr/local/EnergyPlus-9-0-1/Energy+.idd'
-
+        self.evaluation_output = '/home/ict4db/Scrivania/ICT4BD_git-master/files/outputs/'+self.name+'_DB.xlsx'
+        #IDD_file = '/usr/local/EnergyPlus-9-0-1/Energy+.idd'
+        IDD_file = '/home/ict4db/py3/lib/python3.6/site-packages/besos-1.3.3-py3.6.egg/Data/example_idd.idd'
         self.energy_evaluator(self.building)
-        self.correlation(self.evaluation_output)
-        self.plotting(self.evaluation_output)
-        self.final_idf(idf,IDD_file)
+        #self.correlation(self.evaluation_output)
+        #self.plotting(self.evaluation_output)
+        #self.final_idf(idf,IDD_file)
 
     def energy_evaluator(self,building):
         
@@ -627,7 +626,7 @@ class Optimal_config :
         parameters=[insul_param_wall]+[windows_to_wall]+[U_window_param]+[insul_param_roof]
         objectives = ['Electricity:Facility','DistrictHeating:Facility','DistrictCooling:Facility'] # these get made into `MeterReader` or `VariableReader`
         problem = EPProblem(parameters, objectives)
-        samples = create_samples(wwr_list,list1,list1,list2)
+        samples = self.create_samples(wwr_list,list1,list1,list2)
         
         #CREATING EVALUATIONS
         evaluator = EvaluatorEP(problem, building, out_dir='OUTPUTS', err_dir='ERR_OUTPUTS' ,epw=self.epw) # evaluator = problem + building
@@ -635,9 +634,21 @@ class Optimal_config :
         outputs = outputs.sort_values(by =['Insulation Thickness wall','windows-U-factor','Insulation Thickness roof'])
         
         outputs.to_excel(self.evaluation_output)
-        print(outputs)
-        print(outputs.describe())
-    
+        #print(outputs)
+        #print(outputs.describe())
+
+    def create_samples(self,win_to_wall,wall_t,roof_t,u_wind):
+        array = []
+        for i in wall_t:
+            for wwr in win_to_wall:
+                for k in u_wind:
+                    for j in roof_t:
+                        tmp_row =[i,wwr,k,j]
+                        array.append(tmp_row)
+
+        df = pd.DataFrame(array)
+        df.columns = ['Insulation Thickness wall','Window to Wall Ratio','windows-U-factor','Insulation Thickness roof']    
+        return df
 
     def correlation (self,file):
         
@@ -647,7 +658,7 @@ class Optimal_config :
         labels = list(corr.keys())
         corr_matrix = corr.to_numpy()
         corr_matrix = np.around(corr_matrix,decimals=3)
-        print(corr_matrix)
+        #print(corr_matrix)
 
         
         fig, ax = plt.subplots()
@@ -664,17 +675,17 @@ class Optimal_config :
         
         ax.set_title("heatmap of correlations")
         fig.tight_layout()
-        plt.savefig('../plots/'+self.name+'_heatmap.png')
+        plt.savefig('/home/ict4db/Scrivania/ICT4BD_git-master/plots/'+self.name+'_heatmap.png')
 
     def plotting(self,file):
         df = pd.read_excel(file)
         df = df.round(decimals={'Insulation Thickness wall':3,'windows-U-factor':1,'Insulation Thickness roof':3})
         list1=df['Insulation Thickness wall'].unique() #variation thickness
-        print (len(list1))
+        #print (len(list1))
         list2=df['windows-U-factor'].unique() #variation u window
-        print(len(list2))
+        #print(len(list2))
         list3= df['Insulation Thickness roof'].unique()
-        print (len(list3))
+        #print (len(list3))
 
         #plot U-window and roof thickness FIXED and thickness wall varying (3 wwr configurations):
         for wwr in [0.15,0.5,0.9]:
@@ -696,8 +707,8 @@ class Optimal_config :
 
             plt.legend()
             plt.xlabel('thickness [m]')
-            plt.ylabel('Heating [kWqualcosa]')
-            plt.savefig('../plots/thickness_wall/'+self.name+str(title)+'.png')
+            plt.ylabel('Heating [kWh]')
+            plt.savefig('/home/ict4db/Scrivania/ICT4BD_git-master/plots/'+'thick_wall_'+self.name+str(title)+'.png')
             plt.close()
         
         #plot U-window and wall thickness FIXED and thickness roof varying (3 wwr configurations):
@@ -719,8 +730,8 @@ class Optimal_config :
             plt.yscale('log',basey=10)
             plt.legend()
             plt.xlabel('roof thickness[m]')
-            plt.ylabel('Heating [kWqualcosa]')
-            plt.savefig('../plots/thickness_roof/'+self.name+str(title)+'.png')
+            plt.ylabel('Heating [kWh]')
+            plt.savefig('/home/ict4db/Scrivania/ICT4BD_git-master/plots/'+'thick_roof_'+self.name+str(title)+'.png')
             #plt.savefig('plots/thickness_roof/'+str(title)+'U_window.png')
             plt.close()
 
@@ -744,9 +755,9 @@ class Optimal_config :
                 y = list(tmp_df['DistrictHeating:Facility'])
                 plt.plot(x,y,label=label)
             plt.legend()
-            plt.xlabel('window U [kWqualcosa]')
-            plt.ylabel('Heating [kWqualcosa]')
-            plt.savefig('../plots/U_window/'+self.name+str(title)+'.png')
+            plt.xlabel('window U [W/m^2 K]')
+            plt.ylabel('Heating [kWh]')
+            plt.savefig('/home/ict4db/Scrivania/ICT4BD_git-master/plots/'+'U_wind_'+self.name+str(title)+'.png')
             #plt.savefig('plots/U_window/'+str(title)+'U_window.png')
             plt.close()
 
@@ -781,7 +792,8 @@ class Optimal_config :
             C = row['Cooling']
             H = row['Heating']
 
-            if (E < best_E and H < best_H and C < best_C):
+            #if (E < best_E and H < best_H and C < best_C):
+            if (H < best_H and C < best_C):
                 best_index = index
                 best_E = E
                 best_C = C
@@ -789,6 +801,7 @@ class Optimal_config :
             else:
                 continue
         #print(df.iloc[best_index,:])
+
         return best_index
 
 
@@ -809,8 +822,15 @@ class Optimal_config :
         #window material simple glazing...
         #WINDOW: 'Simple 1001', POSITION: 0
         
-        print(df.keys())
-        print(df.loc[best_index,'Insulation Thickness wall'])
+        #print(df.keys())
+        print('==================================')
+        print('best configuration:')
+        print('thick_wall: ',df.loc[best_index,'Insulation Thickness wall'])
+        print('thick_roof: ',df.loc[best_index,'Insulation Thickness roof'])
+        print('U_value: ',df.loc[best_index,'windows-U-factor'])
+        print('WWR: ',df.loc[best_index,'Window to Wall Ratio'])
+        print('==================================')
+
         Material[2].Thickness = df.loc[best_index,'Insulation Thickness roof']
         Material[7].Thickness = df.loc[best_index,'Insulation Thickness wall']
         Window_Material[0].UFactor = df.loc[best_index,'windows-U-factor']
@@ -825,7 +845,7 @@ class Optimal_config :
         
 
         #SAVE THE ULTIMATE IDF FILE chose the directory in saveas
-        idf1.saveas('../files/idf/optimal/'+self.name+'_Optimal.idf')
+        idf1.saveas('/home/ict4db/Scrivania/ICT4BD_git-master/files/idf/'+self.name+'_Optimal.idf')
 
 
 
