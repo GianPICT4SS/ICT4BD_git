@@ -493,7 +493,7 @@ class Prediction():
         df = df.set_index(pd.to_datetime('2018/' + df.index))
         df['Temp_in'] = df[['Temp_in_1', 'Temp_in_2', 'Temp_in_3']].astype(float).mean(1)
         df['deltaT'] = df['Temp_in'] - df['Temp_out']
-        df.to_csv(f'../../files/outputs/en_sig_{name}.csv')
+        df.to_csv(f'../files/outputs/en_sig_{name}.csv')
 
         # ============================================================
         # Energy Signature: HOURLY
@@ -580,7 +580,7 @@ class Prediction():
         ax3.legend()
         ax3.grid(linestyle='--', linewidth=.4, which='both')
         plt.subplots_adjust(bottom=0.3, right=0.8, top=0.9, hspace=1)
-        plt.savefig(fname=f'../../plots/energy_signature_{name}_tout.png', dpi=400)
+        plt.savefig(fname=f'../plots/energy_signature_{name}_tout.png', dpi=400)
         plt.close()
 
 

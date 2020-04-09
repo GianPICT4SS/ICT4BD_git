@@ -11,4 +11,4 @@ fname = Path('../files/idf/optimal')
 epw = Path('../files/epw/ITA_Torino.160590_IWEC.epw')
 
 for idf in fname.iterdir():
-    learn.energy_signature(iddfile=iddfile, idf_path=idf, epw_path=epw)
+    learn.energy_signature(iddfile=iddfile, idf_path=idf, epw_path=epw, name=idf.name)
