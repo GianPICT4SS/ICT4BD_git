@@ -481,9 +481,9 @@ class Prediction():
                     df["Temp_in_3"] = df1[i]
         df['Temp_out'] = df1['Environment:Site Outdoor Air Drybulb Temperature [C](TimeStep)']
         # Power
-        df['Cooling'] = df1['DistrictCooling:Facility [J](TimeStep)']
-        df['Heating'] = df1['DistrictHeating:Facility [J](TimeStep)']
-        df['Electricity'] = df1['Electricity:Facility [J](TimeStep)']
+        df['Cooling'] = df1['DistrictCooling:Facility [J](Hourly)']
+        df['Heating'] = df1['DistrictHeating:Facility [J](Hourly)']
+        df['Electricity'] = df1['Electricity:Facility [J](Hourly)']
 
         df['date'] = df1['Date/Time'].astype('O')
         df['date'] = df['date'].map(lambda x: x if '24:00' not in x else x.replace('24:00', '00:00'))
@@ -502,13 +502,13 @@ class Prediction():
         heating_df = df.where(df['Heating']/3.6e6 > 0.2).dropna()
         heating_df = heating_df.resample('H').mean()
         heating_df = heating_df.dropna()
-        model_H = sm.OLS(heating_df['Heating']/(3.6e6), sm.add_constant(heating_df['deltaT']))
+        model_H = sm.OLS(heating_df['Heating']/(3.6e6), sm.add_constant(heating_df['Temp_out']))
         results_h = model_H.fit()
         # COOLING
         cool_df = df.where(df['Cooling']/3.6e6 > 0.5).dropna()
         cool_df = cool_df.resample('H').mean()
         cool_df = cool_df.dropna()
-        model_C = sm.OLS(cool_df['Cooling']/(3.6e6), sm.add_constant(cool_df['deltaT']))
+        model_C = sm.OLS(cool_df['Cooling']/(3.6e6), sm.add_constant(cool_df['Temp_out']))
         results_c = model_C.fit()
         # Plots
         fig, (ax1, ax2, ax3) = plt.subplots(3, figsize=(10, 10))
@@ -538,7 +538,7 @@ class Prediction():
         cool_df = df.where(df['Cooling']/3.6e6 > 0.5).dropna()
         cool_df = cool_df.resample('D').mean()
         cool_df = cool_df.dropna()
-        model_c = sm.OLS(cool_df['Cooling']/(3.6e6), sm.add_constant(cool_df['deltaT']))
+        model_c = sm.OLS(cool_df['Cooling']/(3.6e6), sm.add_constant(cool_df['Temp_out']))
         results_d_c = model_c.fit()
 
 
@@ -559,14 +559,14 @@ class Prediction():
         heating_df = df.where(df['Heating']/3.6e6 > 0.2).dropna()
         heating_df = heating_df.resample('W').mean()
         heating_df = heating_df.dropna()
-        model_h = sm.OLS(heating_df['Heating']/(3.6e6), sm.add_constant(heating_df['deltaT']))
+        model_h = sm.OLS(heating_df['Heating']/(3.6e6), sm.add_constant(heating_df['Temp_out']))
         results_w_h = model_h.fit()
 
         # COOLING
         cool_df = df.where(df['Cooling']/3.6e6 > 0.5).dropna()
         cool_df = cool_df.resample('W').mean()
         cool_df = cool_df.dropna()
-        model_c = sm.OLS(cool_df['Cooling']/(3.6e6), sm.add_constant(cool_df['deltaT']))
+        model_c = sm.OLS(cool_df['Cooling']/(3.6e6), sm.add_constant(cool_df['Temp_out']))
         results_w_c = model_c.fit()
 
 
