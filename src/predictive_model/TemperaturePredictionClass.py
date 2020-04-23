@@ -2,27 +2,37 @@ import pandas as pd
 import numpy as np
 import sklearn as sk
 from sklearn import preprocessing
+from sklearn.compose import ColumnTransformer
 import random
 
 import sys
 sys.path.insert(1, '../')
-
+import seaborn as sns
 from method_building import Prediction
+from subscribe_building import InfluxDB
 import matplotlib.pyplot as plt
 import tensorflow as tf
+import keras
 from keras.models import Sequential, Model, model_from_json
-from keras.layers import LSTM, Dense, GRU
+from keras.layers import LSTM, Dense, GRU, Concatenate
 from keras.engine.input_layer import Input
 from keras.utils import plot_model
 from keras.optimizers import Adam
 import math
-from sklearn.metrics import r2_score
+from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 import json
 import os
 from pathlib import Path
 
-np.random.seed(69)
-tf.random.set_seed(69)
+from sklearn.base import TransformerMixin #gives fit_transform method for free
+class MyLabelBinarizer(TransformerMixin):
+	def __init__(self, *args, **kwargs):
+		self.encoder = preprocessing.LabelBinarizer(*args, **kwargs)
+	def fit(self, x, y=0):
+		self.encoder.fit(x)
+		return self
+	def transform(self, x, y=0):
+		return self.encoder.transform(x)
 
 class NoModelFound(Exception):
 	"""Raised when no model has been loaded"""
@@ -31,7 +41,7 @@ class NoModelFound(Exception):
 class EarlyStoppingAtNormDifference(tf.keras.callbacks.Callback):
 	"""Stop training when the loss is at its min, i.e. the loss stops decreasing."""
 
-	def __init__(self, patience=2):
+	def __init__(self, patience=8):
 		super(EarlyStoppingAtNormDifference, self).__init__()
 
 		self.patience = patience
@@ -72,7 +82,7 @@ class EarlyStoppingAtNormDifference(tf.keras.callbacks.Callback):
 			self.best_weights = self.model.get_weights()
 		else:
 			self.wait += 1
-			if self.wait > self.patience:
+			if self.wait >= self.patience:
 				self.stopped_epoch = epoch
 				self.model.stop_training = True
 				print('Restoring model weights from the end of the best epoch.')
@@ -84,110 +94,160 @@ class EarlyStoppingAtNormDifference(tf.keras.callbacks.Callback):
 
 
 class TemperatureNN:
-	def __init__(self, path_epout='../eplus_simulation/eplus/eplusout.csv', path_models='models/', path_plots='../../plots/'):
+	def __init__(self, path_epout='../eplus_simulation/eplus/eplusout_Office_On_corrected_Optimal.csv', path_models='models/', path_plots='../../plots/'):
+		np.random.seed(69)
+		tf.random.set_seed(69)
 		self.path_models = path_models
 		self.path_epout = path_epout
 		self.path_plots = path_plots
 		self.learn = Prediction()
 		self.features_considered = [
-							'Temp_ext[C]', 'Pr_ext[Pa]', 'SolarRadiation[W/m2]', 
+							'Temp_ext[C]', 
+							'Pr_ext[Pa]', 'SolarRadiation[W/m2]', 
 							'WindSpeed[m/s]','DirectSolarRadiation[W/m2]', 'AzimuthAngle[deg]', 
-							'AltitudeAngle[deg]','Humidity_1[%]', 'Humidity_2[%]', 
-							'Humidity_3[%]', 'Heating [J]', 'Cooling [J]', 
-							'Temp_in1[C]', 'Temp_in2[C]', 'Temp_in3[C]'
+							'AltitudeAngle[deg]',
+							'Humidity_1[%]', 'Humidity_2[%]', 'Humidity_3[%]', 
+							'Temp_in1[C]', 'Temp_in2[C]', 'Temp_in3[C]',
+							'VentAirChange_1[ach]', 'VentAirChange_2[ach]', 'VentAirChange_3[ach]',
+							'Heating[J]', 'Cooling[J]'
 							]
 
-	def create_data(self):
-		df = pd.read_csv(self.path_epout)
+	def return_features(self):
+		influx = InfluxDB()
+		df = influx.get_dataframe()
+		# df = pd.read_csv(self.path_epout)
 		df = self.learn.create_csv(df)
 		features = df[self.features_considered]
-		
-		if len(self.indices) == 1:
+
+		return df, features
+
+	def create_data(self, df, features):
+		minmax = sk.pipeline.Pipeline(steps=[
+			('mm', preprocessing.MinMaxScaler())
+			])
+
+		quantile = sk.pipeline.Pipeline(steps=[
+			('qt', preprocessing.QuantileTransformer(output_distribution='normal'))
+			])
+
+		if (self.indices) == [10,11,12]:
+			self.cl = ColumnTransformer(
+					[
+					('qt', quantile, slice(0,13)),
+					('mm', minmax, slice(13, 18)),
+					],
+					remainder='passthrough'
+					)
+
+		elif self.indices == [15]:
 			features = features.assign(Temp_in=df[['Temp_in1[C]', 'Temp_in2[C]', 'Temp_in3[C]']].astype(float).mean(1))
 			features = features.rename(columns={'Temp_in': 'Temp_in[C]'})
 			features.pop('Temp_in1[C]')
 			features.pop('Temp_in2[C]')
 			features.pop('Temp_in3[C]')
 
+			self.cl = ColumnTransformer(
+					[
+					('qt', quantile, slice(0,10)),
+					('mm', minmax, slice(10, 15)),
+					('qt2', quantile, [15])
+					],
+					remainder='passthrough'
+					)
+
+		elif (self.indices) == [16]:
+			features = features.assign(Facilities=df['Heating[J]'] + df['Cooling[J]'])
+			features = features.rename(columns={'Facilities':'Facilities[J]'})
+			features.pop('Heating[J]')
+			features.pop('Cooling[J]')
+
+			self.cl = ColumnTransformer(
+					[
+					('qt', quantile, slice(0,13)),
+					('mm', minmax, slice(13, 17)),
+					# ('qt2', quantile, [14])
+					],
+					remainder='passthrough'
+					)
+
 		features.index = df.index
 		data = features.values
-		scaler_data = preprocessing.StandardScaler().fit(data)
-		dataset = scaler_data.transform(data)
+		
+		self.dataset = self.cl.fit_transform(data)
+		return self.dataset
 
-		self.means = [scaler_data.mean_[i] for i in self.indices]
-		self.stds = [scaler_data.scale_[i] for i in self.indices]
-
-		return dataset
-
-	def create_dataset(self, dataset, look_back, future):
+	def create_dataset(self, dataset, look_back, future, step=1):
 		dataX, dataY = [], []
-		for i in range(len(dataset)-look_back-future-1):
-			a = dataset[i:(i+look_back), :]
-			b = dataset[(i + look_back):(i + look_back + future), self.indices]
+		for i in range(0, len(dataset)-look_back-future-1, step):
+			a = dataset[i:i+look_back, :]
+			b = dataset[i+look_back:i+look_back+future, self.indices]
 			dataX.append(a)
 			dataY.append(b)
 
 		return np.array(dataX), np.array(dataY)
 
-	def create_train_test(self, size_train=0.7, size_val=0.2):
-		dataset = self.create_data()
+	def create_train_test(self, df, features, size_train=0.8, size_val=0.1):
+		dataset = self.create_data(df, features)
 		N = dataset.shape[0]
 		xtrain, xval, xtest = dataset[0:int(N*size_train)], dataset[int(N*size_train):int(N*(size_val + size_train))], dataset[int(N*(size_val + size_train))::]
 
 		return xtrain, xtest, xval
 
-	def create_model(self, look_back=24, future=6, n1=256, epochs=30, train=True, load_model=None, lr=0.001, mode='3-output'):
+	def create_model(self, df, features, look_back=24, future=6, n1=256, epochs=30, train=True, load_model=None, lr=0.001, mode='3-output', step=1, name=''):
 		if mode == '3-output':
-			self.indices = [12,13,14]
+			self.indices = [10,11,12]
 		elif mode == '1-output':
-			self.indices = [12]
+			self.indices = [15]
 		elif mode == 'reverse':
-			self.indices = [10, 11]
+			# want to predict Facilitites-> heating, cooling
+			# need to create new feature-> sum of facilitites
+			self.indices = [16]
 		else:
 			print('Mode can only be: reverse, 3-output, 1-output')
 			exit()
 
+		self.mode = mode
+		self.name = name
 		path = Path(self.path_plots)
-		xtrain, xtest, xval = self.create_train_test()
-		xtrain, ytrain = self.create_dataset(xtrain, look_back, future)
-		xtest, ytest = self.create_dataset(xtest, look_back, future)
-		xval, yval = self.create_dataset(xval, look_back, future)
-		print(xtrain.shape, ytrain.shape)
+		xtrain, xtest, xval = self.create_train_test(df, features)
+		xtrain, ytrain = self.create_dataset(xtrain, look_back, future, step)
+		xtest, ytest = self.create_dataset(xtest, look_back, future, step)
+		xval, yval = self.create_dataset(xval, look_back, future, step)
+
+		print(f'Train on {xtrain.shape}, validate on {xval.shape} and test on {xtest.shape}, predict for {ytrain.shape[1]}')
 		#LSTM needs as input: [samples, timesteps, features]
 		n_outputs = ytrain.shape[2]
 		future = ytrain.shape[1]
 
 		if train:
+			batch_size = 32
+			training_steps = xtrain.shape[0] // batch_size
+			validation_steps = xval.shape[0] // batch_size
+
 			inp = Input(shape=(xtrain.shape[1], xtrain.shape[2]))
 
-			gru1 = GRU(n1, return_sequences=True)(inp)
+			gru1 = GRU(n1, return_sequences=True, dropout=0.2)(inp)
 			
-			#Number_of_hidden_layers ~ (N_samples)/(alfa*(N_input + N_output)) --> ~9 in this case for alfa=5
-			gru2 = GRU(n1//2, return_sequences=True, dropout=0.2, recurrent_dropout=0.2)(gru1)
-			gru3 = GRU(n1//4, return_sequences=True, dropout=0.2, recurrent_dropout=0.2)(gru2)
-			gru4 = GRU(n1//4, return_sequences=True, dropout=0.2, recurrent_dropout=0.1)(gru3)
-			gru5 = GRU(n1//8, return_sequences=True, dropout=0.1, recurrent_dropout=0.1)(gru4)
-			# gru6 = GRU(n1//4, return_sequences=True, dropout=0.1, recurrent_dropout=0.1)(gru5)
-			# gru7 = GRU(n1//2, return_sequences=True, dropout=0.1, recurrent_dropout=0.1)(gru6)
-			gru8 = GRU(n1//4, return_sequences=True, dropout=0.1, recurrent_dropout=0.1)(gru5)
+			gru2 = GRU(n1//2, return_sequences=True, dropout=0.3, recurrent_dropout=0.2)(gru1)
+			gru3 = GRU(n1//2, return_sequences=True, dropout=0.5, recurrent_dropout=0.4)(gru2)
+			gru4 = GRU(n1//4, return_sequences=True, dropout=0.5, recurrent_dropout=0.3)(gru3)
+			gru8 = GRU(n1//4, return_sequences=True, dropout=0.5, recurrent_dropout=0.3)(gru4)
 			
-			gru9 = GRU(n1//8, dropout=0.05)(gru8)
+			gru9 = GRU(n1//8, dropout=0.3, recurrent_dropout=0.3)(gru8)
 
 			#output_layers: n layers x n_neurons==future (how much in the future to predict)
 			out = [Dense(future)(gru9) for i in range(n_outputs)]
 			model = Model(inputs=inp, outputs=out)
 			
 			print(model.summary())
-			plot_model(model, to_file=f'{path}/Model.png', show_shapes=True, dpi=300)
+			plot_model(model, to_file=f'{path}/Model_{self.mode}.png', show_shapes=True, dpi=300)
 
 			model.compile(loss='mae', optimizer=Adam(learning_rate=lr))
 			history = model.fit(xtrain, [ytrain[:,:,i] for i in range(n_outputs)], epochs=epochs, 
 				validation_data=(xval,[yval[:,:,i] for i in range(n_outputs)]),
-				# validation_steps=200, steps_per_epoch=100,
-				# batch_size=12,
+				batch_size=batch_size,
 				callbacks=[EarlyStoppingAtNormDifference()]
 				)
-			name = f'Model_epochs{epochs}_history{look_back}_future{future}'
 			self.save_model(model, name)
 			self.plot_loss(history)
 
@@ -198,7 +258,8 @@ class TemperatureNN:
 				model = load_model
 
 		self.evaluate(model, xtrain, ytrain, 'Train')
-		self.evaluate(model, xtest, ytest)
+		self.evaluate(model, xval, yval, 'Validation', new=0)
+		self.evaluate(model, xtest, ytest, new=0)
 
 		return model
 
@@ -221,7 +282,30 @@ class TemperatureNN:
 		model.save_weights(name_model)
 		print('Model Saved')
 
-	def evaluate(self, model, data_to_evaluate, labels, name='Test'):
+	def rescale_(self, data, target, index):
+		if self.mode == '1-output':
+			qt = self.cl.transformers_[2][1]['qt']
+			rescaled = qt.inverse_transform(target.reshape(-1,1))
+
+			return rescaled
+		elif self.mode == '3-output':
+			qt1 = self.cl.transformers_[0][1]['qt']
+			data = data[:,-1,:]
+			data[:, index] = target
+			data = data[:,0:13]
+			rescaled = qt1.inverse_transform(data)
+
+			return rescaled[:, index]
+		elif self.mode == 'reverse':
+			mm = self.cl.transformers_[1][1]['mm']
+			data = data[:,-1,:]
+			data[:, index] = target
+			data = data[:, 13:]
+			rescaled = mm.inverse_transform(data)
+
+			return rescaled[:, -1]
+
+	def evaluate(self, model, data_to_evaluate, labels, dataset='Test', new=1):
 		results = np.array(model.predict(data_to_evaluate))
 		if len(results.shape) == 2:
 			results = results.reshape(1, results.shape[0], results.shape[1])
@@ -229,34 +313,52 @@ class TemperatureNN:
 		path = Path(self.path_plots)
 		predictions = []
 		real_data = []
+
 		for i in range(len(self.indices)):
-			a = labels[:,:,i]*self.stds[i] + self.means[i]
-			b = results[i,:,:]*self.stds[i] + self.means[i]
+			a = self.rescale_(data_to_evaluate, labels[:,-1,i], self.indices[i])
+			b = self.rescale_(data_to_evaluate, results[i,:,-1], self.indices[i])
 			predictions.append(b)
 			real_data.append(a)
 			
-			test_score = r2_score(b, a, multioutput='variance_weighted')
-			print(f'{name} R2 Score: %.2f (1=Best Possible Model)' % (test_score))
-
-			# plt.figure(figsize=(15,6))
-			# plt.plot(a[-50:,0], label='real_data')
-			# plt.plot(b[-50:,0], label='predictions')
-			# plt.legend()
-			# plt.grid()
-			# plt.title(f'{name}_RealVSPrediction_Temp_in{i+1}[C]')
-			# plt.xlabel('TimeSeries size')
-			# plt.ylabel('Temperature [C]')
-			# plt.savefig(f'{path}/{name}_RealVSPrediction_Temp_in{i+1}[C].png')
+			mae = mean_absolute_error(a, b)
+			r2 = r2_score(a, b, multioutput='variance_weighted')
+			rmse = math.sqrt(mean_squared_error(a, b))
 
 			plt.figure(figsize=(15,6))
-			plt.plot(a[-50:,-1], label='real_data')
-			plt.plot(b[-50:,-1], label='predictions')
+			plt.plot(a[-800:], label='real_data')
+			plt.plot(b[-800:], label='predictions')
 			plt.legend()
 			plt.grid()
-			plt.title(f'{name}_RealVSPrediction_Temp_in{i+1}[C]')
 			plt.xlabel('TimeSeries size')
-			plt.ylabel('Temperature [C]')
-			plt.savefig(f'{path}/{name}_RealVSPrediction_Temp_in{i+1}[C].png')
+			if self.mode == '1-output':
+				plt.title('Temperature Prediction')
+				plt.ylabel('Temperature[C]')
+				plt.savefig(f'{path}/{self.name}_{dataset}.png')
+			elif self.mode == 'reverse':
+				plt.title('Consumption Prediction')
+				plt.ylabel('Facility[J]')
+				plt.savefig(f'{path}/{self.name}_{dataset}.png')
+
+			else:
+				plt.title(f'Temperature Zone{i} Prediction')
+				plt.savefig(f'{path}/{self.name}_{i}_{dataset}.png')
+
+			plt.close()
+
+	def save_parameters(self, name, mode, dt, mae, r2, rmse, new):
+		with open('ConfigurationModels.json') as cf:
+			obj = json.loads(cf.read())
+
+		if new:
+			obj[name] = {}
+		obj[name][dt] = {
+			'MAE':mae,
+			'R2':r2,
+			'RMSE':rmse
+		}
+
+		with open('ConfigurationModels.json', 'w') as cf:
+			cf.write(json.dumps(obj, indent=4))
 
 
 	def plot_loss(self, history):
@@ -272,44 +374,26 @@ class TemperatureNN:
 		plt.title('Loss Comparison')
 		plt.ylabel('MAE')
 		plt.xlabel('Epochs')
-		plt.savefig(f'{path}/TrainLoss.png')
-
-	#TODO: possible new method for training better
-	def generator(self, data, lookback, delay, min_index, max_index, shuffle=False, batch_size=12, step=1):
-		if max_index is None:
-			max_index = len(data) - delay - 1
-		i = min_index + lookback
-		while 1:
-			if shuffle:
-				rows = np.random.randint(min_index + lookback, max_index, size=batch_size)
-			else:
-				if i + batch_size >= max_index:
-					i = min_index + lookback
-				rows = np.arange(i, min(i + batch_size, max_index))
-				i += len(rows)
-
-			samples = np.zeros((len(rows), lookback // step, data.shape[-1]))
-			targets = np.zeros((len(rows),))
-
-			for j, row in enumerate(rows):
-				indices = range(rows[j] - lookback, rows[j], step)
-				samples[j] = data[indices]
-				targets[j] = data[rows[j] + delay][1]
-			yield samples, targets
+		plt.savefig(f'{path}/{self.name}_LossPlot.png')
+		plt.close()
 
 if __name__ == '__main__':
 	nn = TemperatureNN()
-	past = 24
-	future = 2
-	epochs = 30
+	df, features = nn.return_features()
+	#6 sample for each hour --> 6*24 = 1 day
+	epochs = 50
+	mode = '3-output'
+	step = 3
+	past = 1
+	future = 1
 
-	name = f"Model_epochs{epochs}_history{past}_future{future}"
+	name = f"Model_epochs{epochs}_history{past}_future{future}_step{step}_mode{mode}"
 	model_name = f"{name}.h5"
 	json_name = f"{name}.json"
 
 	models = os.listdir('models/')
 	if json_name not in models:	
-		nn.create_model(look_back=past, future=future, epochs=epochs)
+		nn.create_model(look_back=past, future=future, epochs=epochs, mode=mode, step=step, name=name)
 	else:
 		model = nn.load_model(json_name, model_name)
-		nn.create_model(look_back=past, future=future, epochs=epochs, train=1, load_model=model, mode='1-output')
+		nn.create_model(df, features, look_back=past, future=future, epochs=epochs, train=0, load_model=model, mode=mode, name=name)

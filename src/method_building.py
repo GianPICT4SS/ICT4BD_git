@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-plt.rcParams['figure.figsize'] = [15, 15]
+# plt.rcParams['figure.figsize'] = [15, 15]
 from mpl_toolkits.mplot3d import Axes3D
 
 from sklearn.model_selection import train_test_split
@@ -359,86 +359,99 @@ class Prediction():
 
     @classmethod
     def create_csv(cls, df):
+        # for i in df.columns:
+        #     print(i)
+
+        # df['BLOCCO1:ZONA1:Zone Ventilation Air Change Rate [ach](TimeStep)'].plot()
+        # plt.show()
+        # exit()
 
         cols = [
-               'Environment:Site Outdoor Air Drybulb Temperature [C](Hourly)',
-               'Environment:Site Outdoor Air Barometric Pressure [Pa](Hourly)',
-               'Environment:Site Diffuse Solar Radiation Rate per Area [W/m2](Hourly)',
-               'Environment:Site Solar Azimuth Angle [deg](Hourly)',
-               'Environment:Site Solar Altitude Angle [deg](Hourly)',
-               'Environment:Site Wind Speed [m/s](Hourly)',
-               'Environment:Site Direct Solar Radiation Rate per Area [W/m2](Hourly)',
-               'DistrictCooling:Facility [J](Hourly)',
-               'DistrictHeating:Facility [J](Hourly)',
-               'BLOCCO1:ZONA2:Zone Operative Temperature [C](Hourly)',
-               'BLOCCO1:ZONA3:Zone Operative Temperature [C](Hourly)',
-               'BLOCCO1:ZONA1:Zone Operative Temperature [C](Hourly)',
-               'BLOCCO1:ZONA2:Zone Infiltration Sensible Heat Loss Energy [J](Hourly)',
-               'BLOCCO1:ZONA2:Zone Infiltration Sensible Heat Gain Energy [J](Hourly)',
-               'BLOCCO1:ZONA2:Zone Infiltration Air Change Rate [ach](Hourly)',
-               'BLOCCO1:ZONA3:Zone Infiltration Sensible Heat Loss Energy [J](Hourly)',
-               'BLOCCO1:ZONA3:Zone Infiltration Sensible Heat Gain Energy [J](Hourly)',
-               'BLOCCO1:ZONA3:Zone Infiltration Air Change Rate [ach](Hourly)',
-               'BLOCCO1:ZONA1:Zone Infiltration Sensible Heat Loss Energy [J](Hourly)',
-               'BLOCCO1:ZONA1:Zone Infiltration Sensible Heat Gain Energy [J](Hourly)',
-               'BLOCCO1:ZONA1:Zone Infiltration Air Change Rate [ach](Hourly)',
-               'BLOCCO1:ZONA2:Zone Ventilation Sensible Heat Loss Energy [J](Hourly)',
-               'BLOCCO1:ZONA2:Zone Ventilation Sensible Heat Gain Energy [J](Hourly)',
-               'BLOCCO1:ZONA2:Zone Ventilation Air Change Rate [ach](Hourly)',
-               'BLOCCO1:ZONA3:Zone Ventilation Sensible Heat Loss Energy [J](Hourly)',
-               'BLOCCO1:ZONA3:Zone Ventilation Sensible Heat Gain Energy [J](Hourly)',
-               'BLOCCO1:ZONA3:Zone Ventilation Air Change Rate [ach](Hourly)',
-               'BLOCCO1:ZONA1:Zone Ventilation Sensible Heat Loss Energy [J](Hourly)',
-               'BLOCCO1:ZONA1:Zone Ventilation Sensible Heat Gain Energy [J](Hourly)',
-               'BLOCCO1:ZONA1:Zone Ventilation Air Change Rate [ach](Hourly)',
-               'BLOCCO1:ZONA2:Zone Air Relative Humidity [%](Hourly)',
-               'BLOCCO1:ZONA3:Zone Air Relative Humidity [%](Hourly)',
-               'BLOCCO1:ZONA1:Zone Air Relative Humidity [%](Hourly)'
+                'Date/Time',
+               'Environment:Site Outdoor Air Drybulb Temperature [C](TimeStep)',
+               'Environment:Site Outdoor Air Barometric Pressure [Pa](TimeStep)',
+               'Environment:Site Diffuse Solar Radiation Rate per Area [W/m2](TimeStep)',
+               'Environment:Site Solar Azimuth Angle [deg](TimeStep)',
+               'Environment:Site Solar Altitude Angle [deg](TimeStep)',
+               'Environment:Site Wind Speed [m/s](TimeStep)',
+               'Environment:Site Direct Solar Radiation Rate per Area [W/m2](TimeStep)',
+               'DistrictCooling:Facility [J](TimeStep)',
+               'DistrictHeating:Facility [J](TimeStep)',
+               'BLOCCO1:ZONA2:Zone Operative Temperature [C](TimeStep)',
+               'BLOCCO1:ZONA3:Zone Operative Temperature [C](TimeStep)',
+               'BLOCCO1:ZONA1:Zone Operative Temperature [C](TimeStep)',
+               'BLOCCO1:ZONA2:Zone Infiltration Sensible Heat Loss Energy [J](TimeStep)',
+               'BLOCCO1:ZONA2:Zone Infiltration Sensible Heat Gain Energy [J](TimeStep)',
+               'BLOCCO1:ZONA2:Zone Infiltration Air Change Rate [ach](TimeStep)',
+               'BLOCCO1:ZONA3:Zone Infiltration Sensible Heat Loss Energy [J](TimeStep)',
+               'BLOCCO1:ZONA3:Zone Infiltration Sensible Heat Gain Energy [J](TimeStep)',
+               'BLOCCO1:ZONA3:Zone Infiltration Air Change Rate [ach](TimeStep)',
+               'BLOCCO1:ZONA1:Zone Infiltration Sensible Heat Loss Energy [J](TimeStep)',
+               'BLOCCO1:ZONA1:Zone Infiltration Sensible Heat Gain Energy [J](TimeStep)',
+               'BLOCCO1:ZONA1:Zone Infiltration Air Change Rate [ach](TimeStep)',
+               'BLOCCO1:ZONA2:Zone Ventilation Sensible Heat Loss Energy [J](TimeStep)',
+               'BLOCCO1:ZONA2:Zone Ventilation Sensible Heat Gain Energy [J](TimeStep)',
+               'BLOCCO1:ZONA2:Zone Ventilation Air Change Rate [ach](TimeStep)',
+               'BLOCCO1:ZONA3:Zone Ventilation Sensible Heat Loss Energy [J](TimeStep)',
+               'BLOCCO1:ZONA3:Zone Ventilation Sensible Heat Gain Energy [J](TimeStep)',
+               'BLOCCO1:ZONA3:Zone Ventilation Air Change Rate [ach](TimeStep)',
+               'BLOCCO1:ZONA1:Zone Ventilation Sensible Heat Loss Energy [J](TimeStep)',
+               'BLOCCO1:ZONA1:Zone Ventilation Sensible Heat Gain Energy [J](TimeStep)',
+               'BLOCCO1:ZONA1:Zone Ventilation Air Change Rate [ach](TimeStep)',
+               'BLOCCO1:ZONA2:Zone Air Relative Humidity [%](TimeStep)',
+               'BLOCCO1:ZONA3:Zone Air Relative Humidity [%](TimeStep)',
+               'BLOCCO1:ZONA1:Zone Air Relative Humidity [%](TimeStep)',
+               'BLOCCO1:ZONA1:Zone Ventilation Air Change Rate [ach](TimeStep)'
+               'BLOCCO1:ZONA2:Zone Ventilation Air Change Rate [ach](TimeStep)'
+               'BLOCCO1:ZONA3:Zone Ventilation Air Change Rate [ach](TimeStep)'
+               # 'BLOCCO1:ZONA1:Zone Air System Sensible Heating Rate [W](TimeStep)'
            ]
 
 
         ren = {
-            'Environment:Site Outdoor Air Drybulb Temperature [C](Hourly)':'Temp_ext[C]',
-            'Environment:Site Outdoor Air Barometric Pressure [Pa](Hourly)':'Pr_ext[Pa]',
-            'Environment:Site Diffuse Solar Radiation Rate per Area [W/m2](Hourly)':'SolarRadiation[W/m2]',
-            'Environment:Site Solar Azimuth Angle [deg](Hourly)':'AzimuthAngle[deg]',
-            'Environment:Site Solar Altitude Angle [deg](Hourly)':'AltitudeAngle[deg]',
-            'Environment:Site Wind Speed [m/s](Hourly)':'WindSpeed[m/s]',
-            'Environment:Site Direct Solar Radiation Rate per Area [W/m2](Hourly)':'DirectSolarRadiation[W/m2]',
-            'DistrictCooling:Facility [J](Hourly)': 'Cooling [J]',
-            'DistrictHeating:Facility [J](Hourly)': 'Heating [J]',
-            'BLOCCO1:ZONA2:Zone Operative Temperature [C](Hourly)':'Temp_in2[C]',
-            'BLOCCO1:ZONA3:Zone Operative Temperature [C](Hourly)':'Temp_in3[C]',
-            'BLOCCO1:ZONA1:Zone Operative Temperature [C](Hourly)':'Temp_in1[C]',
-            'BLOCCO1:ZONA2:Zone Infiltration Sensible Heat Loss Energy [J](Hourly)':'InfHeatLoss_2[J]',
-            'BLOCCO1:ZONA2:Zone Infiltration Sensible Heat Gain Energy [J](Hourly)':'InfHeatGain_2[J]',
-            'BLOCCO1:ZONA2:Zone Infiltration Air Change Rate [ach](Hourly)':'InfAirChange_2[ach]',
-            'BLOCCO1:ZONA3:Zone Infiltration Sensible Heat Loss Energy [J](Hourly)':'InfHeatLoss_3[J]',
-            'BLOCCO1:ZONA3:Zone Infiltration Sensible Heat Gain Energy [J](Hourly)':'InfHeatGain_3[J]',
-            'BLOCCO1:ZONA3:Zone Infiltration Air Change Rate [ach](Hourly)':'InfAirChange_3[ach]',
-            'BLOCCO1:ZONA1:Zone Infiltration Sensible Heat Loss Energy [J](Hourly)':'InfHeatLoss_1[J]',
-            'BLOCCO1:ZONA1:Zone Infiltration Sensible Heat Gain Energy [J](Hourly)':'InfHeatGain_1[J]',
-            'BLOCCO1:ZONA1:Zone Infiltration Air Change Rate [ach](Hourly)':'InfAirChange_1[ach]',
-            'BLOCCO1:ZONA2:Zone Ventilation Sensible Heat Loss Energy [J](Hourly)':'VentHeatLoss_2[J]',
-            'BLOCCO1:ZONA2:Zone Ventilation Sensible Heat Gain Energy [J](Hourly)':'VentHeatGain_2[J]',
-            'BLOCCO1:ZONA2:Zone Ventilation Air Change Rate [ach](Hourly)':'VentAirChange_2[ach]',
-            'BLOCCO1:ZONA3:Zone Ventilation Sensible Heat Loss Energy [J](Hourly)':'VentHeatLoss_3[J]',
-            'BLOCCO1:ZONA3:Zone Ventilation Sensible Heat Gain Energy [J](Hourly)':'VentHeatGain_3[J]',
-            'BLOCCO1:ZONA3:Zone Ventilation Air Change Rate [ach](Hourly)':'VentAirChange_3[ach]',
-            'BLOCCO1:ZONA1:Zone Ventilation Sensible Heat Loss Energy [J](Hourly)':'VentHeatLoss_1[J]',
-            'BLOCCO1:ZONA1:Zone Ventilation Sensible Heat Gain Energy [J](Hourly)':'VentHeatGain_1[J]',
-            'BLOCCO1:ZONA1:Zone Ventilation Air Change Rate [ach](Hourly)':'VentAirChange_1[ach]',
-            'BLOCCO1:ZONA2:Zone Air Relative Humidity [%](Hourly)':'Humidity_2[%]',
-            'BLOCCO1:ZONA3:Zone Air Relative Humidity [%](Hourly)':'Humidity_3[%]',
-            'BLOCCO1:ZONA1:Zone Air Relative Humidity [%](Hourly)':'Humidity_1[%]'
+            'Date/Time':'Date',
+            'Environment:Site Outdoor Air Drybulb Temperature [C](TimeStep)':'Temp_ext[C]',
+            'Environment:Site Outdoor Air Barometric Pressure [Pa](TimeStep)':'Pr_ext[Pa]',
+            'Environment:Site Diffuse Solar Radiation Rate per Area [W/m2](TimeStep)':'SolarRadiation[W/m2]',
+            'Environment:Site Solar Azimuth Angle [deg](TimeStep)':'AzimuthAngle[deg]',
+            'Environment:Site Solar Altitude Angle [deg](TimeStep)':'AltitudeAngle[deg]',
+            'Environment:Site Wind Speed [m/s](TimeStep)':'WindSpeed[m/s]',
+            'Environment:Site Direct Solar Radiation Rate per Area [W/m2](TimeStep)':'DirectSolarRadiation[W/m2]',
+            'DistrictCooling:Facility [J](TimeStep)': 'Cooling[J]',
+            'DistrictHeating:Facility [J](TimeStep)': 'Heating[J]',
+            'BLOCCO1:ZONA2:Zone Operative Temperature [C](TimeStep)':'Temp_in2[C]',
+            'BLOCCO1:ZONA3:Zone Operative Temperature [C](TimeStep)':'Temp_in3[C]',
+            'BLOCCO1:ZONA1:Zone Operative Temperature [C](TimeStep)':'Temp_in1[C]',
+            'BLOCCO1:ZONA2:Zone Infiltration Sensible Heat Loss Energy [J](TimeStep)':'InfHeatLoss_2[J]',
+            'BLOCCO1:ZONA2:Zone Infiltration Sensible Heat Gain Energy [J](TimeStep)':'InfHeatGain_2[J]',
+            'BLOCCO1:ZONA2:Zone Infiltration Air Change Rate [ach](TimeStep)':'InfAirChange_2[ach]',
+            'BLOCCO1:ZONA3:Zone Infiltration Sensible Heat Loss Energy [J](TimeStep)':'InfHeatLoss_3[J]',
+            'BLOCCO1:ZONA3:Zone Infiltration Sensible Heat Gain Energy [J](TimeStep)':'InfHeatGain_3[J]',
+            'BLOCCO1:ZONA3:Zone Infiltration Air Change Rate [ach](TimeStep)':'InfAirChange_3[ach]',
+            'BLOCCO1:ZONA1:Zone Infiltration Sensible Heat Loss Energy [J](TimeStep)':'InfHeatLoss_1[J]',
+            'BLOCCO1:ZONA1:Zone Infiltration Sensible Heat Gain Energy [J](TimeStep)':'InfHeatGain_1[J]',
+            'BLOCCO1:ZONA1:Zone Infiltration Air Change Rate [ach](TimeStep)':'InfAirChange_1[ach]',
+            'BLOCCO1:ZONA2:Zone Ventilation Sensible Heat Loss Energy [J](TimeStep)':'VentHeatLoss_2[J]',
+            'BLOCCO1:ZONA2:Zone Ventilation Sensible Heat Gain Energy [J](TimeStep)':'VentHeatGain_2[J]',
+            'BLOCCO1:ZONA2:Zone Ventilation Air Change Rate [ach](TimeStep)':'VentAirChange_2[ach]',
+            'BLOCCO1:ZONA3:Zone Ventilation Sensible Heat Loss Energy [J](TimeStep)':'VentHeatLoss_3[J]',
+            'BLOCCO1:ZONA3:Zone Ventilation Sensible Heat Gain Energy [J](TimeStep)':'VentHeatGain_3[J]',
+            'BLOCCO1:ZONA3:Zone Ventilation Air Change Rate [ach](TimeStep)':'VentAirChange_3[ach]',
+            'BLOCCO1:ZONA1:Zone Ventilation Sensible Heat Loss Energy [J](TimeStep)':'VentHeatLoss_1[J]',
+            'BLOCCO1:ZONA1:Zone Ventilation Sensible Heat Gain Energy [J](TimeStep)':'VentHeatGain_1[J]',
+            'BLOCCO1:ZONA1:Zone Ventilation Air Change Rate [ach](TimeStep)':'VentAirChange_1[ach]',
+            'BLOCCO1:ZONA2:Zone Air Relative Humidity [%](TimeStep)':'Humidity_2[%]',
+            'BLOCCO1:ZONA3:Zone Air Relative Humidity [%](TimeStep)':'Humidity_3[%]',
+            'BLOCCO1:ZONA1:Zone Air Relative Humidity [%](TimeStep)':'Humidity_1[%]',
         }
 
         df_ = pd.DataFrame(df, columns=cols)
         df_z = df_.rename(columns=ren)
-        df_z['date'] = df['Date/Time'].astype('O')
-        df_z['date'] = df_z['date'].map(lambda x: x if '24:00' not in x else x.replace('24:00', '00:00'))
-        df_z = df_z.set_index('date')
-        df_z = df_z.set_index(pd.to_datetime('2017/' + df_z.index))
+        # df_z['date'] = df['Date/Time'].astype('O')
+        df_z['Date'] = df_z['Date'].map(lambda x: x if '24:00' not in x else x.replace('24:00', '00:00'))
+        df_z['Date'] = pd.to_datetime('2017/' + df_z['Date'])
+        # df_z = df_z.set_index('Date')
+        # df_z = df_z.set_index(pd.to_datetime('2017/' + df_z.index))
 
         return df_z
 
@@ -472,19 +485,19 @@ class Prediction():
         # Temperature
         for i in df1.columns:
             if 'BLOCCO1:ZONA1' in i:
-                if 'Zone Operative Temperature [C](Hourly)' in i:
+                if 'Zone Operative Temperature [C](TimeStep)' in i:
                     df["Temp_in_1"] = df1[i]
             elif 'BLOCCO1:ZONA2' in i:
-                if 'Zone Operative Temperature [C](Hourly)' in i:
+                if 'Zone Operative Temperature [C](TimeStep)' in i:
                     df["Temp_in_2"] = df1[i]
             elif 'BLOCCO1:ZONA3' in i:
-                if 'Zone Operative Temperature [C](Hourly)' in i:
+                if 'Zone Operative Temperature [C](TimeStep)' in i:
                     df["Temp_in_3"] = df1[i]
-        df['Temp_out'] = df1['Environment:Site Outdoor Air Drybulb Temperature [C](Hourly)']
+        df['Temp_out'] = df1['Environment:Site Outdoor Air Drybulb Temperature [C](TimeStep)']
         # Power
-        df['Cooling'] = df1['DistrictCooling:Facility [J](Hourly)']
-        df['Heating'] = df1['DistrictHeating:Facility [J](Hourly)']
-        df['Electricity'] = df1['Electricity:Facility [J](Hourly)']
+        df['Cooling'] = df1['DistrictCooling:Facility [J](TimeStep)']
+        df['Heating'] = df1['DistrictHeating:Facility [J](TimeStep)']
+        df['Electricity'] = df1['Electricity:Facility [J](TimeStep)']
 
         df['date'] = df1['Date/Time'].astype('O')
         df['date'] = df['date'].map(lambda x: x if '24:00' not in x else x.replace('24:00', '00:00'))
@@ -497,7 +510,7 @@ class Prediction():
         df.to_csv(f'../../files/outputs/en_sig_{name}.csv')
 
         # ============================================================
-        # Energy Signature: HOURLY
+        # Energy Signature: TimeStep
         # ============================================================
         # HEATING
         heating_df = df.where(df['Heating']/3.6e6 > 0.2).dropna()
@@ -521,7 +534,7 @@ class Prediction():
 
         ax1.set_xlabel('T_out [C°]')
         ax1.set_ylabel('Energy Consumption [kWh]')
-        ax1.set_title('Hourly resample')
+        ax1.set_title('TimeStep resample')
         ax1.legend()
         ax1.grid(linestyle='--', linewidth=.4, which='both')
 

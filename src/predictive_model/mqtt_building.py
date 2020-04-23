@@ -80,7 +80,9 @@ class Building_publisher():
                 """
         logger.info(f"MQTT client {self.clientID_} publishing {msg} with topic {self.topic_}.")
         # publish a message with a certain topic
+
         self.mqtt_client.publish(self.topic_, msg, self.qos_)
+        # self.mqtt_client.loop()
 
     def OnDisconnect(self, mqtt_client, userdata, rc):
         """ myOnDisconnect function called by on_disconnect callback:
@@ -120,7 +122,7 @@ class Building_publisher():
 class Building_subscriber():
     """Class Led_subscriber: its instances can connect to the broker and subscriber to some topic"""
 
-    msg_body = {}
+    # msg_body = {}
     def __init__(self, clientID, broker="mqtt.eclipse.org", port=1883, topic="", qos=1):
         self.msg_body = {}
         self.clientID_ = clientID
@@ -191,7 +193,6 @@ class Building_subscriber():
         # print("message received: ", str(msg.payload.decode("utf-8")))
         # print("at time: " + str(current_time))
         # print("--------------------------------------------------------------------")
-        print('Message Received')
         self.msg_body = json.loads(msg.payload)
 
     def OnDisconnect(self, mqtt_client, userdata, rc):
