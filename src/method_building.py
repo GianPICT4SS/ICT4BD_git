@@ -90,11 +90,11 @@ class Prediction():
         num_in = cls.create_time_steps(len(history))
         num_out = len(true_future)
 
-        plt.plot(num_in, np.array(history[:, 1]), label='History')
-        plt.plot(np.arange(num_out), np.array(true_future), 'bo',
+        plt.plot(num_in, np.array(history), label='History')
+        plt.plot(np.arange(num_out), np.array(true_future), color='blue',marker='.',
                  label='True Future')
         if prediction.any():
-            plt.plot(np.arange(num_out), np.array(prediction), 'ro',
+            plt.plot(np.arange(num_out), np.array(prediction), color='red',marker='.',
                      label='Predicted Future')
         plt.legend(loc='upper left')
         plt.xlabel('Timestemp')

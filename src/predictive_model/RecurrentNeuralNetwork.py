@@ -7,6 +7,7 @@ import random
 
 import sys
 sys.path.insert(1, '../')
+
 import seaborn as sns
 from method_building import Prediction
 from subscribe_building import InfluxDB
@@ -43,7 +44,6 @@ class EarlyStoppingAtNormDifference(tf.keras.callbacks.Callback):
 
 	def __init__(self, patience=8):
 		super(EarlyStoppingAtNormDifference, self).__init__()
-
 		self.patience = patience
 
 		# best_weights to store the weights at which the minimum loss occurs.
@@ -93,7 +93,7 @@ class EarlyStoppingAtNormDifference(tf.keras.callbacks.Callback):
 			print('Epoch %05d: early stopping' % (self.stopped_epoch + 1))
 
 
-class TemperatureNN:
+class RecurrentNeuralNetwork:
 	def __init__(self, path_epout='../eplus_simulation/eplus/eplusout_Office_On_corrected_Optimal.csv', path_models='models/', path_plots='../../plots/'):
 		np.random.seed(69)
 		tf.random.set_seed(69)
@@ -115,8 +115,9 @@ class TemperatureNN:
 	def return_features(self):
 		influx = InfluxDB()
 		df = influx.get_dataframe()
+		print('DataFrame Loaded')
 		# df = pd.read_csv(self.path_epout)
-		df = self.learn.create_csv(df)
+		# df = self.learn.create_csv(df)
 		features = df[self.features_considered]
 
 		return df, features
@@ -171,6 +172,7 @@ class TemperatureNN:
 					)
 
 		features.index = df.index
+		self.index = features.index
 		data = features.values
 		
 		self.dataset = self.cl.fit_transform(data)
@@ -211,8 +213,8 @@ class TemperatureNN:
 		path = Path(self.path_plots)
 		xtrain, xtest, xval = self.create_train_test(df, features)
 		xtrain, ytrain = self.create_dataset(xtrain, look_back, future, step)
-		xtest, ytest = self.create_dataset(xtest, look_back, future, step)
-		xval, yval = self.create_dataset(xval, look_back, future, step)
+		xtest, ytest = self.create_dataset(xtest, look_back, future, step=1)
+		xval, yval = self.create_dataset(xval, look_back, future, step=1)
 
 		print(f'Train on {xtrain.shape}, validate on {xval.shape} and test on {xtest.shape}, predict for {ytrain.shape[1]}')
 		#LSTM needs as input: [samples, timesteps, features]
@@ -231,6 +233,8 @@ class TemperatureNN:
 			gru2 = GRU(n1//2, return_sequences=True, dropout=0.3, recurrent_dropout=0.2)(gru1)
 			gru3 = GRU(n1//2, return_sequences=True, dropout=0.5, recurrent_dropout=0.4)(gru2)
 			gru4 = GRU(n1//4, return_sequences=True, dropout=0.5, recurrent_dropout=0.3)(gru3)
+			# gru5 = GRU(n1//4, return_sequences=True, dropout=0.5, recurrent_dropout=0.3)(gru4)
+			# gru6 = GRU(n1//4, return_sequences=True, dropout=0.5, recurrent_dropout=0.3)(gru5)
 			gru8 = GRU(n1//4, return_sequences=True, dropout=0.5, recurrent_dropout=0.3)(gru4)
 			
 			gru9 = GRU(n1//8, dropout=0.3, recurrent_dropout=0.3)(gru8)
@@ -246,7 +250,8 @@ class TemperatureNN:
 			history = model.fit(xtrain, [ytrain[:,:,i] for i in range(n_outputs)], epochs=epochs, 
 				validation_data=(xval,[yval[:,:,i] for i in range(n_outputs)]),
 				batch_size=batch_size,
-				callbacks=[EarlyStoppingAtNormDifference()]
+				callbacks=[EarlyStoppingAtNormDifference()],
+				# verbose=0,
 				)
 			self.save_model(model, name)
 			self.plot_loss(history)
@@ -286,23 +291,22 @@ class TemperatureNN:
 		if self.mode == '1-output':
 			qt = self.cl.transformers_[2][1]['qt']
 			rescaled = qt.inverse_transform(target.reshape(-1,1))
-
 			return rescaled
+
 		elif self.mode == '3-output':
 			qt1 = self.cl.transformers_[0][1]['qt']
 			data = data[:,-1,:]
 			data[:, index] = target
 			data = data[:,0:13]
 			rescaled = qt1.inverse_transform(data)
-
 			return rescaled[:, index]
+
 		elif self.mode == 'reverse':
 			mm = self.cl.transformers_[1][1]['mm']
 			data = data[:,-1,:]
 			data[:, index] = target
 			data = data[:, 13:]
 			rescaled = mm.inverse_transform(data)
-
 			return rescaled[:, -1]
 
 	def evaluate(self, model, data_to_evaluate, labels, dataset='Test', new=1):
@@ -320,10 +324,12 @@ class TemperatureNN:
 			predictions.append(b)
 			real_data.append(a)
 			
+			print(dataset)
 			mae = mean_absolute_error(a, b)
 			r2 = r2_score(a, b, multioutput='variance_weighted')
 			rmse = math.sqrt(mean_squared_error(a, b))
-
+			print(mae, r2, rmse)
+			# self.save_parameters(self.name, self.mode, dataset, mae, r2, rmse)
 			plt.figure(figsize=(15,6))
 			plt.plot(a[-800:], label='real_data')
 			plt.plot(b[-800:], label='predictions')
@@ -338,7 +344,6 @@ class TemperatureNN:
 				plt.title('Consumption Prediction')
 				plt.ylabel('Facility[J]')
 				plt.savefig(f'{path}/{self.name}_{dataset}.png')
-
 			else:
 				plt.title(f'Temperature Zone{i} Prediction')
 				plt.savefig(f'{path}/{self.name}_{i}_{dataset}.png')
@@ -360,7 +365,6 @@ class TemperatureNN:
 		with open('ConfigurationModels.json', 'w') as cf:
 			cf.write(json.dumps(obj, indent=4))
 
-
 	def plot_loss(self, history):
 		path = Path(self.path_plots)
 		train_loss = history.history['loss']
@@ -376,24 +380,3 @@ class TemperatureNN:
 		plt.xlabel('Epochs')
 		plt.savefig(f'{path}/{self.name}_LossPlot.png')
 		plt.close()
-
-if __name__ == '__main__':
-	nn = TemperatureNN()
-	df, features = nn.return_features()
-	#6 sample for each hour --> 6*24 = 1 day
-	epochs = 50
-	mode = '3-output'
-	step = 3
-	past = 1
-	future = 1
-
-	name = f"Model_epochs{epochs}_history{past}_future{future}_step{step}_mode{mode}"
-	model_name = f"{name}.h5"
-	json_name = f"{name}.json"
-
-	models = os.listdir('models/')
-	if json_name not in models:	
-		nn.create_model(look_back=past, future=future, epochs=epochs, mode=mode, step=step, name=name)
-	else:
-		model = nn.load_model(json_name, model_name)
-		nn.create_model(df, features, look_back=past, future=future, epochs=epochs, train=0, load_model=model, mode=mode, name=name)
