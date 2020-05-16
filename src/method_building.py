@@ -471,15 +471,15 @@ class Prediction():
         # Temperature
         for i in df1.columns:
             if 'BLOCCO1:ZONA1' in i:
-                if 'Zone Operative Temperature [C](TimeStep)' in i:
+                if 'Zone Operative Temperature [C](Hourly)' in i:
                     df["Temp_in_1"] = df1[i]
             elif 'BLOCCO1:ZONA2' in i:
-                if 'Zone Operative Temperature [C](TimeStep)' in i:
+                if 'Zone Operative Temperature [C](Hourly)' in i:
                     df["Temp_in_2"] = df1[i]
             elif 'BLOCCO1:ZONA3' in i:
-                if 'Zone Operative Temperature [C](TimeStep)' in i:
+                if 'Zone Operative Temperature [C](Hourly)' in i:
                     df["Temp_in_3"] = df1[i]
-        df['Temp_out'] = df1['Environment:Site Outdoor Air Drybulb Temperature [C](TimeStep)']
+        df['Temp_out'] = df1['Environment:Site Outdoor Air Drybulb Temperature [C](Hourly)']
         # Power
         df['Cooling'] = df1['DistrictCooling:Facility [J](Hourly)']
         df['Heating'] = df1['DistrictHeating:Facility [J](Hourly)']
@@ -531,7 +531,7 @@ class Prediction():
         heating_df = df.where(df['Heating']/3.6e6 > 0.2).dropna()
         heating_df = heating_df.resample('D').mean()
         heating_df = heating_df.dropna()
-        model_h = sm.OLS(heating_df['Heating']/3.6e6, sm.add_constant(heating_df['deltaT']))
+        model_h = sm.OLS(heating_df['Heating']/3.6e6, sm.add_constant(heating_df['Temp_out']))
         results_d_h = model_h.fit()
 
         # COOLING
