@@ -1583,7 +1583,7 @@
     -8.084524392,6.810300589,3,  !- X,Y,Z ==> Vertex 3 {m}
     -.084524392,6.810300589,3;  !- X,Y,Z ==> Vertex 4 {m}
 
-   ! Blocco 1, Zona 2, Parete - 24,000 mq - 270,0°, Surface Area: 24,000mq
+   ! Blocco 1, Zona 2, Parete - 24,000 mq - 270,0ï¿½, Surface Area: 24,000mq
 
   BuildingSurface:Detailed,
     Blocco1:Zona2_Wall_4_0_0,!- Name
@@ -1600,6 +1600,24 @@
     -8.084524392,-1.189699411,0,  !- X,Y,Z ==> Vertex 2 {m}
     -8.084524392,-1.189699411,3,  !- X,Y,Z ==> Vertex 3 {m}
     -8.084524392,6.810300589,3;  !- X,Y,Z ==> Vertex 4 {m}
+
+    ! Window, 6,310mq
+
+  FenestrationSurface:Detailed,
+    Blocco1:Zona2_Wall_4_0_0_0_0_0_Win,  !- Name
+    Window,                  !- Surface Type
+    1001,                    !- Construction Name
+    Blocco1:Zona2_Wall_4_0_0,!- Building Surface Name
+    ,                        !- Outside Boundary Condition Object
+    AutoCalculate,           !- View Factor to Ground
+    1,                       !- Frame and Divider Name
+    1,                       !- Multiplier
+    4,                       !- Number of Vertices
+    -8.084524392,5.03230059,.94,  !- X,Y,Z ==> Vertex 1 {m}
+    -8.084524392,.58830059,.94,  !- X,Y,Z ==> Vertex 2 {m}
+    -8.084524392,.58830059,2.36,  !- X,Y,Z ==> Vertex 3 {m}
+    -8.084524392,5.03230059,2.36;  !- X,Y,Z ==> Vertex 4 {m}
+
 
    ! Blocco 1, Zona 2, Partizione - 24,000 mq  (Adiabatico), Surface Area: 24,000mq
 
@@ -2075,7 +2093,7 @@
     9.915475608,6.810300589,3,  !- X,Y,Z ==> Vertex 3 {m}
     1.915475608,6.810300589,3;  !- X,Y,Z ==> Vertex 4 {m}
 
-   ! Blocco 1, Zona 1, Parete - 24,000 mq - 90,0°, Surface Area: 24,000mq
+   ! Blocco 1, Zona 1, Parete - 24,000 mq - 90,0ï¿½, Surface Area: 24,000mq
 
   BuildingSurface:Detailed,
     Blocco1:Zona1_Wall_2_0_0,!- Name
@@ -2092,6 +2110,24 @@
     9.915475608,6.810300589,0,  !- X,Y,Z ==> Vertex 2 {m}
     9.915475608,6.810300589,3,  !- X,Y,Z ==> Vertex 3 {m}
     9.915475608,-1.189699411,3;  !- X,Y,Z ==> Vertex 4 {m}
+
+    
+    ! Window, 6,310mq
+
+  FenestrationSurface:Detailed,
+    Blocco1:Zona1_Wall_2_0_0_0_0_0_Win,  !- Name
+    Window,                  !- Surface Type
+    1001,                    !- Construction Name
+    Blocco1:Zona1_Wall_2_0_0,!- Building Surface Name
+    ,                        !- Outside Boundary Condition Object
+    AutoCalculate,           !- View Factor to Ground
+    1,                       !- Frame and Divider Name
+    1,                       !- Multiplier
+    4,                       !- Number of Vertices
+    9.915475608,.58830059,.94,  !- X,Y,Z ==> Vertex 1 {m}
+    9.915475608,5.03230059,.94,  !- X,Y,Z ==> Vertex 2 {m}
+    9.915475608,5.03230059,2.36,  !- X,Y,Z ==> Vertex 3 {m}
+    9.915475608,.58830059,2.36;  !- X,Y,Z ==> Vertex 4 {m}
 
    ! Blocco 1, Zona 1, Partizione - 24,000 mq  (Adiabatico), Surface Area: 24,000mq
 
