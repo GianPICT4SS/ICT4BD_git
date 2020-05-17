@@ -3,11 +3,12 @@ from RecurrentNeuralNetwork import *
 rnn = RecurrentNeuralNetwork()
 df, features = rnn.return_features()
 #6 sample for each hour --> 6*24 = 1 day
+
 epochs = 50
-mode = '3-output'
-step = 1
+mode = '1-output'
+step = 3
 past = 1
-future = 12
+future = 6
 
 name = f"Model_epochs{epochs}_history{past}_future{future}_step{step}_mode{mode}"
 model_name = f"{name}.h5"
