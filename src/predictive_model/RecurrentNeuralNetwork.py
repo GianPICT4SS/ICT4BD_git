@@ -113,14 +113,16 @@ class RecurrentNeuralNetwork:
 							'Heating[J]', 'Cooling[J]'
 							]
 
-	def return_features(self):
-		# influx = InfluxDB()
-		# df = influx.get_dataframe()
-		print('DataFrame Loaded')
-		df = pd.read_csv(self.path_epout)
-		df = self.learn.create_csv(df)
+	def return_features(self, from_influx=0):
+		if from_influx:
+			influx = InfluxDB()
+			df = influx.get_dataframe()
+		else:
+			df = pd.read_csv(self.path_epout)
+			df = self.learn.create_csv(df)
 		features = df[self.features_considered]
 
+		print('DataFrame Loaded')
 		return df, features
 
 	def create_data(self, df, features):
