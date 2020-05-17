@@ -35,10 +35,13 @@ logger = logging.getLogger(__name__)
 
 
 class Prediction():
-    """Class Utility for the project: here are implemented methods useful to do the Energy Signature and to create
-     specific dataset using features extracted from Energy+ simulation. There are also some methods useful for the prediction phase,
-     in particular a method for obtaining the dataset, for RNN, using generators. There are also a method, for doing
-     predictions using a Multi-layer Precettor Regressor (MLPR)."""
+    """
+    Class Utility for the project: here are implemented methods useful to do the Energy Signature and to create
+     specific dataset using features extracted from the Energy+ simulation. There are also some methods useful for the
+     prediction phase,in particular a method for obtaining the dataset, for RNN, using generators.
+     There are also a method, for doing predictions using a Multi-layer Perceptron Regressor (MLPR).
+
+     """
 
 
     @classmethod
@@ -158,6 +161,18 @@ class Prediction():
     @classmethod
     def generator(cls, data, lookback, delay, min_index, max_index,
                   shuffle=False, batch_size=128, step=1):
+        """
+        Create a generator to yield samples for RNN
+        :param data: dataframe
+        :param lookback: integer
+        :param delay: integer
+        :param min_index: integer
+        :param max_index: integer
+        :param shuffle: Boolean
+        :param batch_size: integer
+        :param step: integer
+        :return: python generator
+        """
         if max_index is None:
             max_index = len(data) - delay - 1
         i = min_index + lookback
@@ -177,10 +192,19 @@ class Prediction():
                 targets[j] = data[rows[j] + delay][1]
             yield samples, targets
 
-        # Neural Network Multi-layer Perceptron regressor
+
 
     @classmethod
     def nnMR(cls, samples, output, test_size=0.2, random_state=123):
+        """
+        Neural Network Multi-layer Perceptron regressor
+
+        :param samples: dataframe
+        :param output: target vector
+        :param test_size: integer
+        :param random_state: integer
+        :return: test results
+        """
 
         train_in, test_in, train_out, test_out = train_test_split(samples, output, test_size=test_size,
                                                                       random_state=random_state)
@@ -225,13 +249,6 @@ class Prediction():
 
         return results
 
-
-
-
-
-
-
-
     @classmethod
     def heatmap(cls, X, columns, name):
         if not hasattr(X, 'columns'):
@@ -274,6 +291,7 @@ class Prediction():
         idf_path: a str with the path for idf file,
         epw_path: str path for epw file.
         n_points: the number of the sample points to be used in the simulation
+
         """
 
 
@@ -449,12 +467,19 @@ class Prediction():
     @classmethod
     def energy_signature(cls, iddfile, idf_path, epw_path, name):
         """
+        Do ES and plot the results:
+        1) Do Energy+ simulation
+        2) read output simulation (eplusout.csv file)
+        3) take consumption and temperature features
+        4) compute Energy Signature by finding the best lines using The Ordinary Least Square algorithm.
+        5) Plot the results.
 
         :param iddfile: Energy+.idd file path
         :param idf_path: idf file path
         :param epw_path: weather file path
         :param name: flag name indicating which type of idf is used
         :return: None
+
         """
 
 
