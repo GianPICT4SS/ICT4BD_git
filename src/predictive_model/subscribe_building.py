@@ -8,6 +8,12 @@ from influxdb import InfluxDBClient, DataFrameClient
 import pandas as pd
 
 class InfluxDB:
+	"""
+		This class is used for creating an interface for uploading samples to a Influx Database.
+		The samples are taken from a broker, where data are uploaded from a publisher which takes the samples
+		from the output of eplus.
+		The format_json_body method creates the correct json object to be uploaded to InfluxDB
+	"""
 	def __init__(self, database_name='BuildingDesign', drop=0):
 		self.db_name = database_name
 		self.client = InfluxDBClient(host='localhost', port=8086)
