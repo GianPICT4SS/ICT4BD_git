@@ -35,6 +35,10 @@ logger = logging.getLogger(__name__)
 
 
 class Prediction():
+    """Class Utility for the project: here are implemented methods useful to do the Energy Signature and to create
+     specific dataset using features extracted from Energy+ simulation. There are also some methods useful for the prediction phase,
+     in particular a method for obtaining the dataset, for RNN, using generators. There are also a method, for doing
+     predictions using a Multi-layer Precettor Regressor (MLPR)."""
 
 
     @classmethod
@@ -358,6 +362,7 @@ class Prediction():
 
     @classmethod
     def create_csv(cls, df):
+        """crete a csv useful for prediction"""
 
         cols = [
                'Environment:Site Outdoor Air Drybulb Temperature [C](TimeStep)',
