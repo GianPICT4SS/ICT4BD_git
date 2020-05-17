@@ -25,16 +25,6 @@ import json
 import os
 from pathlib import Path
 
-from sklearn.base import TransformerMixin #gives fit_transform method for free
-class MyLabelBinarizer(TransformerMixin):
-	def __init__(self, *args, **kwargs):
-		self.encoder = preprocessing.LabelBinarizer(*args, **kwargs)
-	def fit(self, x, y=0):
-		self.encoder.fit(x)
-		return self
-	def transform(self, x, y=0):
-		return self.encoder.transform(x)
-
 class NoModelFound(Exception):
 	"""Raised when no model has been loaded"""
 	pass
@@ -94,6 +84,17 @@ class EarlyStoppingAtNormDifference(tf.keras.callbacks.Callback):
 
 
 class RecurrentNeuralNetwork:
+	"""
+		This class is used for creating a framework for predicting the Average Temperarature (1-output), the 3 Zonal Temperatures (3-output)
+		and the HVAC Consumption (reverse).
+		The model used is a GRU-RNN, which takes as input past data of a timeseries structured as [samples, timesteps, features]: for this purpose
+		the method create_dataset is used.
+		The model is created upon the Keras-Framework in the create_model method.
+		The final methods are used to plot the various outputs and to estimate the differente metrics useful for selecting the best model.
+
+		An istance of the class is created in the main.py file, where all the methods are called accordingly.
+
+	"""
 	def __init__(self, path_epout='../eplus_simulation/eplus/eplusout_Office_On_corrected_Optimal.csv', path_models='models/', path_plots='../../plots/'):
 		np.random.seed(69)
 		tf.random.set_seed(69)
@@ -112,14 +113,16 @@ class RecurrentNeuralNetwork:
 							'Heating[J]', 'Cooling[J]'
 							]
 
-	def return_features(self):
-		influx = InfluxDB()
-		df = influx.get_dataframe()
-		print('DataFrame Loaded')
-		# df = pd.read_csv(self.path_epout)
-		# df = self.learn.create_csv(df)
+	def return_features(self, from_influx=0):
+		if from_influx:
+			influx = InfluxDB()
+			df = influx.get_dataframe()
+		else:
+			df = pd.read_csv(self.path_epout)
+			df = self.learn.create_csv(df)
 		features = df[self.features_considered]
 
+		print('DataFrame Loaded')
 		return df, features
 
 	def create_data(self, df, features):
@@ -362,7 +365,7 @@ class RecurrentNeuralNetwork:
 			'RMSE':rmse
 		}
 
-		with open('ConfigurationModels.json', 'w') as cf:
+		with open('ConfigurationModels.json', 'w+') as cf:
 			cf.write(json.dumps(obj, indent=4))
 
 	def plot_loss(self, history):
